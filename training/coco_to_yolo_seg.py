@@ -1,5 +1,5 @@
 """
-Convert SORD (one COCO JSON per PNG) into YOLOv8-seg layout.
+Convert SORD (one LabelMe JSON per PNG; standard COCO also works) into YOLOv8-seg layout.
 
     python training/coco_to_yolo_seg.py --train data/sord/SORD-train-00000 data/sord/SORD-train-00001 \
                                         --val data/sord/SORD-valid-00000 --out data/sord_yolo
@@ -49,6 +49,23 @@ def seg_to_polygon(seg, h, w):
     return None
 
 
+def labelme_to_coco(d):
+    """LabelMe JSON -> minimal per-image COCO dict."""
+    anns = []
+    for sh in d.get("shapes", []):
+        pts = sh.get("points") or []
+        if sh.get("shape_type", "polygon") == "rectangle" and len(pts) == 2:
+            (x1, y1), (x2, y2) = pts
+            pts = [[x1, y1], [x2, y1], [x2, y2], [x1, y2]]
+        if len(pts) < 3:
+            continue
+        anns.append({"image_id": 1, "category_name": sh["label"],
+                     "segmentation": [[v for xy in pts for v in xy]]})
+    return {"images": [{"id": 1, "file_name": d.get("imagePath"),
+                        "width": d.get("imageWidth"), "height": d.get("imageHeight")}],
+            "annotations": anns, "categories": []}
+
+
 def iter_coco(folders):
     """Yield (json_path, coco_dict) for every JSON under the folders."""
     for f in folders:
@@ -58,6 +75,8 @@ def iter_coco(folders):
             except Exception as e:
                 print(f"  skip {jp.name}: {e}")
                 continue
+            if isinstance(d, dict) and "shapes" in d:  # LabelMe (what SORD uses)
+                d = labelme_to_coco(d)
             if isinstance(d, dict) and "annotations" in d:
                 yield jp, d
 
