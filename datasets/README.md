@@ -2,6 +2,8 @@
 
 The datasets only **teach** the AI. They are not stored in this repo (GitHub caps files at 100 MB; SORD alone is 120 GB). Run the script below to pull them into a local `data/` folder (git-ignored), then upload to Roboflow for labelling.
 
+See **[CATALOGUE.md](CATALOGUE.md)** for every public rebar dataset we found, with licences checked (open-licence only for training).
+
 ## Quick start
 
 ```bash
