@@ -1,0 +1,12 @@
+# Everything the pipeline, training and live view need. Pinned: same versions on every machine.
+# Install: python -m pip install -r requirements.txt
+# GPU (Colab / CUDA): install torch + torchvision from https://pytorch.org first, then this file.
+numpy==2.5.4
+opencv-python==5.1.0.95
+pillow==13.0.0
+PyYAML==6.0.3
+torch==2.15.0
+torchvision==0.29.2
+ultralytics==8.4.216
+roboflow==1.7.3
+huggingface_hub==2.4.0

@@ -122,7 +122,6 @@ def st_pull(a):
 
 
 def st_train(a):
-    from ultralytics import YOLO
     if a.stage == "pretrain":
         data, start, name = PATHS["sord_yolo"] / "data.yaml", a.model or "yolov8n-seg.pt", "pretrain"
     else:
@@ -134,6 +133,8 @@ def st_train(a):
     if device == "cpu" and not a.force_cpu:
         raise SystemExit("No CUDA GPU here. Train in Colab (training/train_sord_yolov8seg.ipynb),\n"
                          "or add --force-cpu for a short test run (e.g. --epochs 3 --imgsz 640).")
+    from ultralytics import YOLO  # imported late so the checks above run without it
+
     YOLO(str(start)).train(data=str(data), epochs=a.epochs, imgsz=a.imgsz, batch=a.batch,
                            patience=a.patience, device=device, project=str(PATHS["runs"]),
                            name=name, exist_ok=True)
