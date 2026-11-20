@@ -14,7 +14,7 @@ No public dataset labels the *faults* themselves (missing bar, wrong spacing, lo
 | [Column Tie Detection v7](https://universe.roboflow.com/column-tie-detection/custom-workflow-object-detection-yhfbh) | Column cages, ties present or missing | Boxes: `Tie`, `No Tie`, `PartialTie` | 752 images | CC BY 4.0 | Needs `ROBOFLOW_API_KEY` |
 | [SteelBindings v1](https://universe.roboflow.com/steelbinding-for-rcc/steelbindings) | Beams, columns, stirrups | Boxes: `Beam`, `Column`, `Lateral-Ties`, `Stirrup` | 303 images | CC BY 4.0 | Needs `ROBOFLOW_API_KEY` |
 | [stirrup-recognition-dataset](https://universe.roboflow.com/jiawens-workspace/stirrup-recognition-dataset) | Stirrups | Boxes: `stirrup` | 301 images | CC BY 4.0 | Fork in Roboflow (no API version) |
-| [ConRebSeg](https://github.com/DTU-PAS/ConRebSeg) | Real construction sites, exposed rebar | Segmentation: rebar, person, car, truck | 14,805 images, **22 GB** self-collected | Code GPL-3.0, data CC BY 4.0 | Too big for this laptop (13 GB free). Use in Colab or on another drive. Skip its YouTube part (`--skip_yt_download`): no clear licence |
+| [ConRebSeg](https://github.com/DTU-PAS/ConRebSeg) | Real construction sites, exposed rebar | Segmentation: rebar, person, car, truck | 14,805 images, **22 GB** self-collected | Code GPL-3.0, data CC BY 4.0 | Downloaded to D: and converted by `python pipeline.py conrebseg` (self-collected only: 6,637 train, 3,454 val, 2,090 test images, about 26,000 bars). The Colab notebook downloads it itself. Its YouTube part is skipped: no clear licence |
 
 ### Roboflow Universe, to check one by one
 

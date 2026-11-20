@@ -7,9 +7,10 @@ Stages, in order:
   markers    print the 4 ArUco markers (A4, 100 mm)
   frames     site / mock-up videos -> sharp, non-duplicate frames to label
   upload     send those frames to the Roboflow project for labelling      (needs ROBOFLOW_API_KEY)
-  sord       download + convert SORD, the open synthetic pre-training set
+  conrebseg  unpack + convert ConRebSeg (real sites, CC BY 4.0), the pre-training set
+  sord       download + convert SORD (synthetic, CC BY-NC): optional, for quick tests
   pull       download your labelled Roboflow version as YOLO-seg           (needs ROBOFLOW_API_KEY)
-  train      pretrain on SORD, or fine-tune on your labels
+  train      pretrain on ConRebSeg (or SORD), or fine-tune on your labels
   eval       score a model on a dataset's val split -> JSON
   export     best.pt -> CoreML (iPhone) / TFLite (Android) / ONNX (server)
   live       run the model on a webcam, phone stream or video; press C to capture a frame
@@ -20,7 +21,7 @@ Example run, start to finish:
   python pipeline.py frames videos/*.mp4
   python pipeline.py upload
       ... label bar / tie / hook_90 / hook_135 in Roboflow, then Generate a version ...
-  python pipeline.py sord --shards 2
+  python pipeline.py conrebseg                       # after downloading it to data/conrebseg
   python pipeline.py train --stage pretrain          # better in Colab (GPU)
   python pipeline.py pull --version 1
   python pipeline.py train --stage finetune
@@ -50,6 +51,8 @@ PATHS = {
     "frames": ROOT / "data" / "frames",
     "sord": ROOT / "data" / "sord",
     "sord_yolo": ROOT / "data" / "sord_yolo",
+    "conrebseg": ROOT / "data" / "conrebseg",
+    "conrebseg_yolo": ROOT / "data" / "conrebseg_yolo",
     "ours": ROOT / "data" / "ours",
     "runs": ROOT / "runs",
     "captures": ROOT / "live" / "captures",
@@ -117,6 +120,21 @@ def st_sord(a):
         "--out", PATHS["sord_yolo"])
 
 
+def st_conrebseg(a):
+    from concrete_evidence import conrebseg as crs
+    root = PATHS["conrebseg"]
+    if not (root / "samples.json").exists():
+        raise SystemExit(f"{root / 'samples.json'} not found. Download ConRebSeg first (datasets/CATALOGUE.md).")
+    if not a.skip_extract:
+        zp = root / "ConRebSeg.zip"
+        if not zp.exists():
+            raise SystemExit(f"{zp} not found. Download it first, or pass --skip-extract if already unpacked.")
+        print(f"unpacked {crs.extract(zp, root)} new images (self-collected only, no YouTube)")
+    stats = crs.convert(root, PATHS["conrebseg_yolo"], limit=a.limit)
+    print(json.dumps(stats, indent=2))
+    print(f"wrote {PATHS['conrebseg_yolo'] / 'data.yaml'}")
+
+
 def st_pull(a):
     from roboflow import Roboflow
     proj = Roboflow(api_key=need_key()).workspace(RF_WORKSPACE).project(RF_PROJECT)
@@ -126,12 +144,12 @@ def st_pull(a):
 
 def st_train(a):
     if a.stage == "pretrain":
-        data, start, name = PATHS["sord_yolo"] / "data.yaml", a.model or "yolov8n-seg.pt", "pretrain"
+        data, start, name = PATHS[f"{a.data}_yolo"] / "data.yaml", a.model or "yolov8n-seg.pt", "pretrain"
     else:
         data, name = PATHS["ours"] / "data.yaml", "finetune"
         start = a.model or (PRETRAIN if PRETRAIN.exists() else "yolov8n-seg.pt")
     if not Path(data).exists():
-        raise SystemExit(f"{data} not found. Run the 'sord' or 'pull' stage first.")
+        raise SystemExit(f"{data} not found. Run the 'conrebseg', 'sord' or 'pull' stage first.")
     device = a.device or ("0" if has_gpu() else "cpu")
     if device == "cpu" and not a.force_cpu:
         raise SystemExit("No CUDA GPU here. Train in Colab (training/train_sord_yolov8seg.ipynb),\n"
@@ -147,8 +165,8 @@ def st_train(a):
 def st_eval(a):
     from ultralytics import YOLO
     model = a.model or best_model()
-    data = a.data or (PATHS["ours"] / "data.yaml" if (PATHS["ours"] / "data.yaml").exists()
-                      else PATHS["sord_yolo"] / "data.yaml")
+    data = a.data or next((PATHS[k] / "data.yaml" for k in ("ours", "conrebseg_yolo", "sord_yolo")
+                           if (PATHS[k] / "data.yaml").exists()), PATHS["ours"] / "data.yaml")
     m = YOLO(str(model)).val(data=str(data), imgsz=a.imgsz, split="val", plots=False, verbose=False)
     res = {"model": str(model), "data": str(data),
            "box_mAP50": round(float(m.box.map50), 4), "mask_mAP50": round(float(m.seg.map50), 4),
@@ -213,6 +231,10 @@ def main():
     s.add_argument("--folder", default=str(PATHS["frames"])); s.add_argument("--batch", default="site_frames")
     s.set_defaults(fn=st_upload)
 
+    s = sub.add_parser("conrebseg", help="unpack + convert ConRebSeg (real sites)")
+    s.add_argument("--limit", type=int, default=None, help="at most N images per split, for a quick run")
+    s.add_argument("--skip-extract", action="store_true"); s.set_defaults(fn=st_conrebseg)
+
     s = sub.add_parser("sord", help="download + convert SORD"); s.add_argument("--shards", type=int, default=2)
     s.set_defaults(fn=st_sord)
 
@@ -221,6 +243,7 @@ def main():
 
     s = sub.add_parser("train", help="pretrain on SORD or fine-tune on our labels")
     s.add_argument("--stage", choices=["pretrain", "finetune"], required=True)
+    s.add_argument("--data", choices=["conrebseg", "sord"], default="conrebseg", help="pretraining set")
     s.add_argument("--model", default=None); s.add_argument("--epochs", type=int, default=50)
     s.add_argument("--imgsz", type=int, default=640); s.add_argument("--batch", type=int, default=8)
     s.add_argument("--patience", type=int, default=15); s.add_argument("--device", default=None)

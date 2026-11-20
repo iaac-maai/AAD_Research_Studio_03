@@ -5,7 +5,7 @@ One script, `pipeline.py`, runs every stage. Each stage reads what the stage bef
 ```
  FILM         LABEL                TRAIN                              SCORE      USE        CHECK
  ────         ─────                ─────                              ─────      ───        ─────
- markers ──► frames ──► upload ──► pretrain (SORD; open sets next) ─┐
+ markers ──► frames ──► upload ──► pretrain (ConRebSeg, real sites) ┐
                         (Roboflow:                                  ├─► eval ──► export ──► live ──C──► check ──► a person
                          label) ──► pull ──► train finetune ────────┘  (scores)  (phone)  (capture)  (vs bending   confirms
                                                                                                       schedule)    or rejects
@@ -39,10 +39,10 @@ $env:ROBOFLOW_API_KEY = "..."
 | 3 | **Frames** | `python pipeline.py frames videos/*.mp4` | `data/frames/`: one frame every 0.5 s, blurry and duplicate frames dropped. |
 | 4 | **Upload** | `python pipeline.py upload` | Frames sent to the Roboflow project `concrete-evidence-column-cages`. |
 | 5 | **Label** | (Roboflow) | Outline every piece as a polygon: `bar · tie · hook_90 · hook_135`. Smart Polygon speeds it up. Aim for 150–300 frames. Then **Generate** a version with blur/brightness augmentation. |
-| 6 | **SORD** | `python pipeline.py sord --shards 2` | Open synthetic rebar set (CC BY-NC 4.0), converted to YOLO-seg in `data/sord_yolo/`. |
-| 7 | **Pretrain** | `python pipeline.py train --stage pretrain` | `runs/pretrain/weights/best.pt`. Needs a GPU: use the Colab notebook `training/train_sord_yolov8seg.ipynb`. |
+| 6 | **ConRebSeg** | `python pipeline.py conrebseg` | Real construction-site photos (DTU, CC BY 4.0), self-collected part only (no YouTube), `ExposedBars` as `bar`, converted to YOLO-seg in `data/conrebseg_yolo/` with its own train / val / test split. Download it into `data/conrebseg/` first (22.6 GB: `ConRebSeg.zip` + `samples.json`, see the notebook). `--limit 1000` for a quick run. SORD (`python pipeline.py sord`, synthetic, CC BY-NC) stays as an optional quick test. |
+| 7 | **Pretrain** | `python pipeline.py train --stage pretrain` | The baseline, on ConRebSeg (`--data sord` for SORD): `runs/pretrain/weights/best.pt`. Needs a GPU: use the Colab notebook `training/train_rebar_yolov8seg.ipynb`, Part A. |
 | 8 | **Pull** | `python pipeline.py pull --version 1` | Your labelled version in `data/ours/`. |
-| 9 | **Fine-tune** | `python pipeline.py train --stage finetune` | `runs/finetune/weights/best.pt`, starting from the SORD weights. GPU / Colab (Part B of the notebook). |
+| 9 | **Fine-tune** | `python pipeline.py train --stage finetune` | `runs/finetune/weights/best.pt`, starting from the baseline weights, same seed. GPU / Colab (Part B of the notebook). |
 | 10 | **Evaluate** | `python pipeline.py eval` | `runs/eval.json`: mask precision, recall, mAP per class. These are the numbers for the `[__]` boxes on the slides. |
 | 11 | **Export** | `python pipeline.py export --format coreml` | Model for the phone (`coreml` iPhone/iPad, `tflite` Android, `onnx` server). |
 | 12 | **Live** | `python pipeline.py live --source 0` | Webcam (or `--source video.mp4`, or a phone stream URL). Masks, a tracking ID per bar, markers, mm scale. Says **READY TO CHECK** when all 4 markers are in view and the camera is still; press **C** to save that frame and its detections in mm to `live/captures/` (faces blurred). |
@@ -52,7 +52,7 @@ Weights and data never go into git (`runs/`, `data/`, `*.pt` are ignored). Keep 
 
 ## Why two training stages
 
-- **SORD** teaches what rebar looks like (thousands of bars, free labels), but it is rendered, and its classes are `intersection` (crossings) and `spacing` (the **gaps** between bars), not bars.
+- **ConRebSeg** teaches what exposed rebar looks like on real sites: about 26,000 outlined bars in 12,000 photos, with dust, shadow and clutter. One class, `bar`.
 - **Our labels** teach the classes we actually check (`bar`, `tie`, hooks) on real camera frames: blur, glare, our phone, our cages. Bar-by-bar checking needs this stage.
 
 ## Where the live view hands over to the checker

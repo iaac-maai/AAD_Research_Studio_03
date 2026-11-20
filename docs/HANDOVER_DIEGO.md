@@ -33,7 +33,7 @@ The board is the source of truth for dates; this table matches it on 20 Nov.
 | 2 | Extract frames (faces blurred automatically) | `python pipeline.py frames videos/*.mp4` | Sat 21 Nov |
 | 3 | Upload to Roboflow | `python pipeline.py upload` (set `ROBOFLOW_API_KEY` in the terminal first, never in a file) | Sun 22 Nov |
 | 4 | Label 150 frames as **polygons** | Roboflow, project `concrete-evidence-column-cages`. Smart Polygon helps | Sun 22 Nov |
-| 5 | Baseline on the 3 open datasets: start it in Colab, it trains while you label | Colab, T4 GPU: `training/train_sord_yolov8seg.ipynb`, Part A. Part A only loads SORD today; Akshat adds ConRebSeg and the two Roboflow sets after downloading them on Sat 21 | Sun 22 Nov |
+| 5 | Baseline on the 3 open datasets: start it in Colab, it trains while you label | Colab, T4 GPU: `training/train_rebar_yolov8seg.ipynb`, Part A. It downloads ConRebSeg (22.6 GB) straight to Colab and checks it. Column Tie / SteelBindings have boxes only, so they aren't in this model | Sun 22 Nov |
 | 6 | Generate a version: 70/20/10 split, blur + brightness augmentation | Roboflow | Mon 23 Nov |
 | 7 | Fine-tune on our labels, same split and seed; compare with the baseline | same notebook, Part B, or `python pipeline.py pull --version 1` then `train --stage finetune` on a GPU | Mon 23 Nov |
 | 8 | Evaluate and log the run on the team board | `python pipeline.py eval` → `runs/eval.json` | Mon 23 Nov |
