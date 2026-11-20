@@ -1,0 +1,259 @@
+<title>Rebar Process Timeline</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one vertical rail from design to pour; each step is a row of when / step / faults / app feature, grouped by phase. */
+:root{
+  --bg:#f3f4f2; --surface:#ffffff; --ink:#1d2321; --muted:#5d6763; --line:#d6dad6;
+  --steel:#2f5d7c; --steel-soft:#e3ecf2;
+  --ok:#2e7d4f; --ok-soft:#e2f1e7; --warn:#a86a00; --warn-soft:#f8eed9; --plan:#6a5b9a; --plan-soft:#ece8f6; --future:#6b716e; --future-soft:#eaecea;
+  --focus:#c2410c;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#131716; --surface:#1b201f; --ink:#e6eae8; --muted:#9aa4a0; --line:#2e3533;
+  --steel:#7fb0d2; --steel-soft:#1e2c36;
+  --ok:#6cc391; --ok-soft:#1a2c22; --warn:#e0a84a; --warn-soft:#2e2615; --plan:#b2a3e3; --plan-soft:#25213a; --future:#a0a6a3; --future-soft:#232827;
+  --focus:#f08a4b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#131716; --surface:#1b201f; --ink:#e6eae8; --muted:#9aa4a0; --line:#2e3533;
+  --steel:#7fb0d2; --steel-soft:#1e2c36;
+  --ok:#6cc391; --ok-soft:#1a2c22; --warn:#e0a84a; --warn-soft:#2e2615; --plan:#b2a3e3; --plan-soft:#25213a; --future:#a0a6a3; --future-soft:#232827;
+  --focus:#f08a4b; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-block:32px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:28px}
+header{display:grid;gap:10px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(28px,4.4vw,44px);line-height:1.05;margin:0;text-wrap:balance}
+.lede{max-width:68ch;color:var(--muted);margin:0}
+.lede b{color:var(--ink);font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.controls{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;border-block:1px solid var(--line);padding-block:12px}
+.controls .group{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.controls .lbl{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:4px}
+button.chip{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:4px 12px;cursor:pointer}
+button.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button.chip:focus-visible{outline:2px solid var(--steel);outline-offset:2px}
+.pill{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:11px;letter-spacing:.04em;text-transform:uppercase;border-radius:4px;padding:2px 7px;white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.s-working{color:var(--ok);background:var(--ok-soft)}
+.s-progress{color:var(--warn);background:var(--warn-soft)}
+.s-planned{color:var(--plan);background:var(--plan-soft)}
+.s-future{color:var(--future);background:var(--future-soft)}
+.phase{display:grid;gap:0}
+.phase-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;padding-bottom:10px}
+.phase-head h2{font-family:var(--f-display);font-weight:700;font-size:20px;margin:0}
+.phase-head .where{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.phase-head .core{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--focus);border:1px solid var(--focus);border-radius:4px;padding:1px 6px}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:0;border-left:3px solid var(--line);margin-left:6px}
+.phase.is-core .steps{border-left-color:var(--focus)}
+.step{position:relative;display:grid;grid-template-columns:120px minmax(0,1.05fr) minmax(0,1fr) minmax(0,1.25fr);gap:16px;padding:14px 0 14px 22px;border-bottom:1px solid var(--line)}
+.step::before{content:"";position:absolute;left:-8.5px;top:20px;width:14px;height:14px;border-radius:50%;background:var(--bg);border:3px solid var(--line)}
+.phase.is-core .step::before{border-color:var(--focus)}
+.when{font-family:var(--f-mono);font-size:12px;color:var(--muted);padding-top:3px}
+.when .n{display:block;font-size:11px;color:var(--ink);font-weight:500;margin-bottom:2px}
+.what h3{font-size:16px;font-weight:600;margin:0 0 2px}
+.what .who{font-size:13px;color:var(--muted);margin:0}
+.what .ref{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);margin-top:6px}
+.col-lbl{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin:0 0 4px}
+.faults ul{margin:0;padding-left:16px;font-size:13.5px}
+.faults li+li{margin-top:2px}
+.feature{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:10px 12px;display:grid;gap:6px;align-content:start}
+.feature .top{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;justify-content:space-between}
+.feature h4{margin:0;font-size:14.5px;font-weight:600;color:var(--steel)}
+.feature p{margin:0;font-size:13.5px}
+.feature .how{font-family:var(--f-mono);font-size:11.5px;color:var(--muted)}
+.empty{color:var(--muted);font-style:italic;padding:12px 0}
+.summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.summary .cell{border-top:3px solid var(--line);padding-top:8px}
+.summary .cell.c-working{border-color:var(--ok)} .summary .cell.c-progress{border-color:var(--warn)} .summary .cell.c-planned{border-color:var(--plan)} .summary .cell.c-future{border-color:var(--future)}
+.summary .big{font-family:var(--f-display);font-weight:800;font-size:28px;font-variant-numeric:tabular-nums;line-height:1}
+.summary .sub{font-size:13px;color:var(--muted)}
+footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px;display:grid;gap:6px}
+@media (max-width:900px){
+  .step{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
+  .when{grid-column:1/-1;display:flex;gap:10px;padding-top:0}
+  .when .n{margin:0}
+  .feature{grid-column:1/-1}
+  .summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:560px){
+  .step{grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:no-preference){button.chip{transition:background .15s,color .15s}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Concrete Evidence · Rebar from drawing to pour</div>
+    <h1>Every step a bar goes through, and what the app does there</h1>
+    <p class="lede">20 steps in 6 phases. Each one lists the faults that can start there and the app feature that catches them. <b>Our core is placing to pour</b>, checked bar by bar. The other phases feed it, or come later as add-ons. Timings are typical for a cast-in-place slab or column and vary by site.</p>
+  </header>
+
+  <section class="summary" id="summary" aria-label="Feature status"></section>
+
+  <div class="controls" role="toolbar" aria-label="Filter steps">
+    <div class="group" id="f-status"><span class="lbl">Feature status</span></div>
+    <div class="group" id="f-core"><span class="lbl">Show</span></div>
+  </div>
+
+  <main id="timeline" style="display:grid;gap:30px"></main>
+
+  <footer>
+    <div>Status as of 20 Nov 2026 (week 4 of the 7-week plan, 28 Oct – 15 Dec). <b>Working</b> = runs today in <span style="font-family:var(--f-mono)">ce/</span> or the skewer notebook. <b>In progress</b> = this week. <b>Planned</b> = in the 7-week plan. <b>Future</b> = add-on after the studio.</div>
+    <div>Standards named are the ones the team already uses: EN 13670 (execution tolerances), Eurocode 2 / Código Estructural (cover, laps, spacing), shape codes per ISO 3766 / UNE 36831.</div>
+  </footer>
+</div>
+
+<script>
+const PHASES = [
+  {id:"design", name:"Design and detailing", where:"Office · engineer and detailer"},
+  {id:"fab", name:"Fabrication", where:"Bending yard (ferralla)"},
+  {id:"receive", name:"Delivery and storage", where:"Site gate and laydown area"},
+  {id:"place", name:"Placing and tying", where:"On the formwork", core:true},
+  {id:"check", name:"Pre-pour inspection", where:"On the formwork", core:true},
+  {id:"pour", name:"Pour and record", where:"Pour day and after", core:true},
+];
+
+const STEPS = [
+  {p:"design", when:"Weeks before", t:"Structural design", who:"Structural engineer", ref:"IFC / Revit model",
+   faults:["Bars too congested to place or vibrate","Clashes between beam, column and slab bars"],
+   f:{name:"Plan: read the design", s:"progress", d:"Claude reads the drawing or IFC and lists every bar per bay: mark, diameter, spacing, cover.", how:"spec.py → bay checklist"}},
+  {p:"design", when:"Weeks before", t:"Detailing and bending schedule", who:"Detailer", ref:"Bar marks, shape codes, cut lengths",
+   faults:["Wrong shape code or cut length","Missing laps or anchorage lengths"],
+   f:{name:"Schedule check", s:"future", d:"Cross-check the bending schedule against the model: every bar in the model has a line, every length meets EC2 lap rules.", how:"rules engine, no AI"}},
+  {p:"design", when:"Weeks before", t:"Rationalise bar families", who:"Detailer + our tool", ref:"Add-on 1 in the deck",
+   faults:["Hundreds of unique bars on complex geometry: more chances to mix them up"],
+   f:{name:"Rationalise", s:"future", d:"Cluster bars by bend and length and snap them to a few families within EN 13670 tolerance.", how:"clustering on IFC bars"}},
+
+  {p:"fab", when:"1–2 weeks before", t:"Cutting and bending", who:"Bending yard", ref:"Shape codes, mandrel diameter",
+   faults:["Wrong bend angle or leg length","90° hook where a 135° seismic hook is specified"],
+   f:{name:"Shape check", s:"future", d:"Photo of a bent bar on the bench, classified by shape code and compared to the schedule.", how:"Dataset A · bent shapes"}},
+  {p:"fab", when:"1–2 weeks before", t:"Tagging and bundling", who:"Bending yard", ref:"One tag per bar mark",
+   faults:["Wrong tag on a bundle","Two marks mixed in one bundle"],
+   f:{name:"Tag scan", s:"future", d:"Scan the bundle tag and log which marks left the yard.", how:"QR / OCR"}},
+
+  {p:"receive", when:"2–5 days before", t:"Delivery and receiving", who:"Site manager", ref:"Delivery note vs schedule",
+   faults:["Short delivery: bars missing from a bundle","Wrong diameter delivered"],
+   f:{name:"Receive: count bundles", s:"future", d:"Photo of the bundle ends, bars counted and matched to the delivery note.", how:"Dataset B · RebarDSC (licence to confirm)"}},
+  {p:"receive", when:"2–5 days before", t:"Storage and sorting", who:"Crew", ref:"Sorted by bar mark, off the ground",
+   faults:["Bars stored on mud or corroding","Marks mixed up in the laydown area"],
+   f:{name:"Sorting guide", s:"future", d:"Shows which stack holds which mark and which bay it goes to next.", how:"schedule + tags"}},
+
+  {p:"place", when:"1–3 days before", t:"Formwork and setting out", who:"Formwork crew, surveyor", ref:"Gridlines, levels",
+   faults:["Formwork out of position, so the cover is wrong before any bar goes in"],
+   f:{name:"Markers", s:"working", d:"Crew fixes 4 printed ArUco markers at the bay corners. They set true scale (pixels → mm) and identify the bay.", how:"OpenCV ArUco · ce/geometry.py"}},
+  {p:"place", when:"1–3 days before", t:"Spacers and chairs", who:"Steel fixers", ref:"EC2 nominal cover",
+   faults:["Missing spacers, so bottom bars sit on the formwork","Chairs too short, so the top mat sits low"],
+   f:{name:"Cover check", s:"planned", d:"Depth from LiDAR or a single photo (Depth Anything) measures the bar height above the formwork.", how:"week 4–5 · depth step"}},
+  {p:"place", when:"1–3 days before", t:"Bottom mat", who:"Steel fixers", ref:"Bar marks per drawing",
+   faults:["Missing bar","Bar shifted from its position","Wrong spacing"],
+   f:{name:"Place guide (AR)", s:"planned", d:"Tablet shows where each bar goes, by family, on top of the camera view.", how:"week 5 · USDZ in AR Quick Look"}},
+  {p:"place", when:"1–3 days before", t:"Column and beam cages", who:"Steel fixers", ref:"Stirrup spacing, 135° hooks",
+   faults:["Stirrups too far apart","Missing stirrup","Wrong hook angle"],
+   f:{name:"Stirrup check", s:"progress", d:"Counts stirrups along the cage and measures their spacing; flags any missing ones.", how:"Column Tie + SteelBindings (CC BY 4.0)"}},
+  {p:"place", when:"1–3 days before", t:"Top mat", who:"Steel fixers", ref:"Top-steel height",
+   faults:["Top bars too low: the error behind cracking and sagging","Bars pushed down by people walking on them"],
+   f:{name:"Top-steel height", s:"planned", d:"Can't be seen from above. Needs depth: LiDAR scan aligned to the IFC model, or monocular depth.", how:"week 4 · ICP in Open3D"}},
+  {p:"place", when:"1–3 days before", t:"Laps, anchorages, couplers", who:"Steel fixers", ref:"EC2 lap length",
+   faults:["Lap too short","Laps all at the same section"],
+   f:{name:"Lap check", s:"future", d:"Measures overlap length where two bars run side by side and compares it with the required lap.", how:"segmentation + geometry"}},
+  {p:"place", when:"1–3 days before", t:"Tying at crossings", who:"Steel fixers", ref:"Tie wire",
+   faults:["Untied crossings, so the cage moves during the pour"],
+   f:{name:"Tie check", s:"progress", d:"Finds every crossing and checks whether it has a tie.", how:"SORD intersections (CC BY-NC) + own photos"}},
+  {p:"place", when:"1–3 days before", t:"Embedded items", who:"MEP trades", ref:"Sleeves, conduits, boxes",
+   faults:["Bars cut or bent aside to fit a sleeve"],
+   f:{name:"Clash flag", s:"future", d:"Flags bars that are displaced near an opening or sleeve.", how:"compare to model"}},
+
+  {p:"check", when:"Day before", t:"Foreman self-check", who:"Steel-fixing foreman", ref:"One photo per bay",
+   faults:["Errors left for the inspector to find, or not found at all"],
+   f:{name:"Check: one photo, every bar", s:"working", d:"Photo of the bay from above. Every bar is matched to its bar in the design, then checked for presence, spacing and size.", how:"ce/inspect.py · 90/90 bars on synthetic mats · YOLO-seg on SORD next"}},
+  {p:"check", when:"Day before", t:"Pre-pour inspection", who:"Director de ejecución (aparejador), OCT", ref:"EN 13670 tolerances",
+   faults:["Inspector checks a sample, not every bay","Paper notes, no photo record"],
+   f:{name:"Traffic light + fix", s:"working", d:"Each zone is OK, close or fix, with the fix in plain words: “Lift bars 3–5 by 10 mm”.", how:"ce/report.py → HTML report"}},
+  {p:"check", when:"Day before", t:"Fix and re-check", who:"Crew", ref:"Until all green",
+   faults:["Fix made but not re-checked"],
+   f:{name:"Re-photo loop", s:"planned", d:"Crew fixes and takes a new photo; only the zones that failed are re-checked.", how:"week 6"}},
+
+  {p:"pour", when:"Pour day", t:"Sign-off and pour", who:"Engineer signs, crew pours", ref:"Human signs, never the app",
+   faults:["Pour starts before sign-off","Bars displaced during vibration"],
+   f:{name:"Sign-off", s:"planned", d:"Engineer signs in the app. The app flags, but never approves a pour by itself.", how:"week 6 · crew app"}},
+  {p:"pour", when:"After", t:"As-built record", who:"Contractor, insurer", ref:"Seguro decenal (10-year)",
+   faults:["No proof of what is inside the concrete"],
+   f:{name:"Evidence log", s:"working", d:"Dated record per bay: photo, measured values, decisions, who signed. Usable by insurers and the OCT.", how:"ce/evidence.py · log.jsonl"}},
+];
+
+const STATUS = {working:"Working", progress:"In progress", planned:"Planned", future:"Future"};
+const SUB = {working:"runs today", progress:"this week", planned:"in the 7-week plan", future:"add-ons after the studio"};
+let fStatus = "all", fCore = "all";
+
+function el(tag, cls, html){const e=document.createElement(tag); if(cls) e.className=cls; if(html!==undefined) e.innerHTML=html; return e;}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+function renderSummary(){
+  const box=document.getElementById("summary"); box.innerHTML="";
+  for(const k of Object.keys(STATUS)){
+    const n=STEPS.filter(s=>s.f.s===k).length;
+    const c=el("div","cell c-"+k);
+    c.append(el("div","big",n), el("div","", `<span class="pill s-${k}">${STATUS[k]}</span>`), el("div","sub",SUB[k]));
+    box.append(c);
+  }
+}
+
+function chip(group, value, label, getter, setter){
+  const b=el("button","chip",esc(label)); b.type="button"; b.id=`chip-${group}-${value}`;
+  b.setAttribute("aria-pressed", String(getter()===value));
+  b.addEventListener("click",()=>{setter(value); try{localStorage.setItem("rpt-"+group,value)}catch(e){} syncChips(); render();});
+  b.dataset.group=group; b.dataset.value=value;
+  return b;
+}
+function syncChips(){
+  document.querySelectorAll("button.chip").forEach(b=>{
+    const cur=b.dataset.group==="status"?fStatus:fCore;
+    b.setAttribute("aria-pressed", String(cur===b.dataset.value));
+  });
+}
+
+function render(){
+  const main=document.getElementById("timeline"); main.innerHTML="";
+  let i=0, shown=0;
+  for(const ph of PHASES){
+    const steps=STEPS.filter(s=>s.p===ph.id);
+    const visible=steps.filter(s=>(fStatus==="all"||s.f.s===fStatus)&&(fCore==="all"||ph.core));
+    const startIdx=STEPS.indexOf(steps[0]);
+    if(!visible.length) continue;
+    const sec=el("section","phase"+(ph.core?" is-core":""));
+    const head=el("div","phase-head",`<h2>${esc(ph.name)}</h2><span class="where">${esc(ph.where)}</span>${ph.core?'<span class="core">Our core</span>':""}`);
+    const ol=el("ol","steps");
+    for(const s of visible){
+      const n=STEPS.indexOf(s)+1; shown++;
+      const li=el("li","step");
+      li.append(
+        el("div","when",`<span class="n">Step ${String(n).padStart(2,"0")}</span>${esc(s.when)}`),
+        el("div","what",`<h3>${esc(s.t)}</h3><p class="who">${esc(s.who)}</p><div class="ref">${esc(s.ref)}</div>`),
+        el("div","faults",`<p class="col-lbl">What can go wrong</p><ul>${s.faults.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`),
+        el("div","feature",`<div class="top"><h4>${esc(s.f.name)}</h4><span class="pill s-${s.f.s}">${STATUS[s.f.s]}</span></div><p>${esc(s.f.d)}</p><div class="how">${esc(s.f.how)}</div>`)
+      );
+      ol.append(li);
+    }
+    sec.append(head, ol); main.append(sec);
+  }
+  if(!shown) main.append(el("p","empty","No steps match these filters."));
+}
+
+(function init(){
+  try{fStatus=localStorage.getItem("rpt-status")||"all"; fCore=localStorage.getItem("rpt-core")||"all";}catch(e){}
+  if(fStatus!=="all" && !STATUS[fStatus]) fStatus="all";
+  if(fCore!=="all" && fCore!=="core") fCore="all";
+  const gs=document.getElementById("f-status"), gc=document.getElementById("f-core");
+  gs.append(chip("status","all","All",()=>fStatus,v=>fStatus=v));
+  for(const k of Object.keys(STATUS)) gs.append(chip("status",k,STATUS[k],()=>fStatus,v=>fStatus=v));
+  gc.append(chip("core","all","All phases",()=>fCore,v=>fCore=v), chip("core","core","Our core only",()=>fCore,v=>fCore=v));
+  renderSummary(); render();
+})();
+</script>

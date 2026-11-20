@@ -1,2 +1,6 @@
 data/
 *.tar
+.venv/
+__pycache__/
+runs/
+*.pt
