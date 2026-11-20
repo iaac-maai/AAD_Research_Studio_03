@@ -12,7 +12,8 @@ Stages, in order:
   train      pretrain on SORD, or fine-tune on your labels
   eval       score a model on a dataset's val split -> JSON
   export     best.pt -> CoreML (iPhone) / TFLite (Android) / ONNX (server)
-  live       run the model on a webcam, phone stream or video
+  live       run the model on a webcam, phone stream or video; press C to capture a frame
+  check      a captured frame against the bar bending schedule -> faults for a person to confirm
 
 Example run, start to finish:
   python pipeline.py markers
@@ -26,6 +27,7 @@ Example run, start to finish:
   python pipeline.py eval
   python pipeline.py export --format coreml
   python pipeline.py live --source 0
+  python pipeline.py check --schedule live/schedule_example.json     # latest capture
 
 The API key is read from the environment only. Never write it into a file in this repo.
 """
@@ -50,6 +52,7 @@ PATHS = {
     "sord_yolo": ROOT / "data" / "sord_yolo",
     "ours": ROOT / "data" / "ours",
     "runs": ROOT / "runs",
+    "captures": ROOT / "live" / "captures",
 }
 PRETRAIN = PATHS["runs"] / "pretrain" / "weights" / "best.pt"
 FINETUNE = PATHS["runs"] / "finetune" / "weights" / "best.pt"
@@ -172,6 +175,27 @@ def st_live(a):
     run(PY, *args)
 
 
+def st_check(a):
+    from concrete_evidence.check import load_schedule, summary
+    from concrete_evidence.check import run as run_checks
+    if a.capture:
+        cap_path = Path(a.capture)
+    else:
+        caps = sorted(p for p in PATHS["captures"].glob("*.json") if not p.name.endswith(".check.json"))
+        if not caps:
+            raise SystemExit(f"No captures in {PATHS['captures']}. Run the live view and press C first.")
+        cap_path = caps[-1]
+    try:
+        schedule = load_schedule(a.schedule)
+    except (OSError, ValueError) as e:
+        raise SystemExit(f"Schedule {a.schedule}: {e}") from e
+    result = run_checks(json.loads(cap_path.read_text()), schedule)
+    result["capture"] = cap_path.name
+    out = cap_path.with_suffix(".check.json")
+    out.write_text(json.dumps(result, indent=2))
+    print(summary(result), f"\nwrote {out}")
+
+
 # --------------------------------------------------------------------- cli ---
 
 def main():
@@ -215,6 +239,11 @@ def main():
     s.add_argument("--source", default="0"); s.add_argument("--model", default=None)
     s.add_argument("--imgsz", type=int, default=640); s.add_argument("--auto", action="store_true")
     s.set_defaults(fn=st_live)
+
+    s = sub.add_parser("check", help="captured frame vs bending schedule -> faults")
+    s.add_argument("capture", nargs="?", default=None, help="capture JSON (default: the latest in live/captures)")
+    s.add_argument("--schedule", required=True, help="bar bending schedule JSON (see live/schedule_example.json)")
+    s.set_defaults(fn=st_check)
 
     a = p.parse_args()
     a.fn(a)

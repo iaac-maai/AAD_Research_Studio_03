@@ -3,11 +3,12 @@
 One script, `pipeline.py`, runs every stage. Each stage reads what the stage before it wrote, so you can stop and pick up again at any point.
 
 ```
- FILM            LABEL               TRAIN                        CHECK              USE
- ────            ─────               ─────                        ─────              ───
- markers ──► frames ──► upload ──►  sord ──► train pretrain ─┐
-                        (Roboflow:   (open, synthetic)        ├─► eval ──► export ──► live
-                        label bars) ──► pull ──► train finetune ┘   (scores)  (phone)   (webcam / phone / video)
+ FILM         LABEL                TRAIN                              SCORE      USE        CHECK
+ ────         ─────                ─────                              ─────      ───        ─────
+ markers ──► frames ──► upload ──► pretrain (SORD; open sets next) ─┐
+                        (Roboflow:                                  ├─► eval ──► export ──► live ──C──► check ──► a person
+                         label) ──► pull ──► train finetune ────────┘  (scores)  (phone)  (capture)  (vs bending   confirms
+                                                                                                      schedule)    or rejects
 ```
 
 ## Setup (once per laptop)
@@ -44,7 +45,8 @@ $env:ROBOFLOW_API_KEY = "..."
 | 9 | **Fine-tune** | `python pipeline.py train --stage finetune` | `runs/finetune/weights/best.pt`, starting from the SORD weights. GPU / Colab (Part B of the notebook). |
 | 10 | **Evaluate** | `python pipeline.py eval` | `runs/eval.json`: mask precision, recall, mAP per class. These are the numbers for the `[__]` boxes on the slides. |
 | 11 | **Export** | `python pipeline.py export --format coreml` | Model for the phone (`coreml` iPhone/iPad, `tflite` Android, `onnx` server). |
-| 12 | **Live** | `python pipeline.py live --source 0` | Webcam (or `--source video.mp4`, or a phone stream URL). Masks, a tracking ID per bar, markers, mm scale. Says **READY TO CHECK** when all 4 markers are in view and the camera is still; press **C** to save that frame and its detections in mm to `live/captures/`. |
+| 12 | **Live** | `python pipeline.py live --source 0` | Webcam (or `--source video.mp4`, or a phone stream URL). Masks, a tracking ID per bar, markers, mm scale. Says **READY TO CHECK** when all 4 markers are in view and the camera is still; press **C** to save that frame and its detections in mm to `live/captures/` (faces blurred). |
+| 13 | **Check** | `python pipeline.py check --schedule live/schedule_example.json` | The latest capture against the bar bending schedule: bar count (missing bar), bar size, spacing (shifted or missing bar), hook angle (90° vs 135°) and hook tail length. Writes `<capture>.check.json`, every fault with the bars' tracking ids, for a person to confirm or reject. |
 
 Weights and data never go into git (`runs/`, `data/`, `*.pt` are ignored). Keep `best.pt` on the team Google Drive.
 
@@ -55,11 +57,29 @@ Weights and data never go into git (`runs/`, `data/`, `*.pt` are ignored). Keep 
 
 ## Where the live view hands over to the checker
 
-Live video is for aiming and the overlay. The measured check (missing bar, spacing in mm) runs on one **captured** frame: all 4 markers visible, camera still. Each capture saves the photo, the annotated photo and a JSON with every detection's tracking id, class, centre and size in mm. That JSON is the input for the bar-by-bar comparison against the drawing.
+Live video is for aiming and the overlay. The measured check runs on one **captured** frame: all 4 markers visible, camera still. Each capture saves the photo, the annotated photo and a JSON with every detection's tracking id, class, centre, and length, width and direction taken from its mask, in px and mm.
+
+## The check: formulas against the bending schedule
+
+The engineer's bar bending schedule says what the cage must be. Write it as JSON (copy `live/schedule_example.json`): bar diameter, number of bars, spacing, hook angle and tail length as a multiple of the diameter, plus tolerances. Each check is a formula on the capture (`concrete_evidence/check.py`):
+
+| Check | Fault when | Why it matters |
+|---|---|---|
+| Bar count | fewer or more bars than scheduled | a missing bar |
+| Spacing | a gap between neighbouring parallel bars is off by more than the tolerance; over 1.5 × the spacing means a bar is probably missing or shifted | cover and load paths |
+| Bar size | a bar's width is off the scheduled diameter (markers needed) | wrong bar delivered |
+| Hook angle | a `hook_90` where the schedule says 135° | 90° stirrup hooks opened up in earthquakes, where 135° hooks hold |
+| Hook tail | the hook's outline is shorter than factor × tie diameter | a short tail pulls out |
+
+- **Scale:** the markers when they are in view. Without them, the scheduled bar diameter over the bars' median width in pixels (rougher, and bar size can't then be checked).
+- **Tail factor:** the example uses 10 × the diameter. Check the figure your code requires (Eurocode 2 / 8 or local) before relying on it.
+- **A person decides.** The result is never "approved". It lists faults for someone on site to confirm or reject: the camera can miss a bar hidden behind another (occlusion), and columns and beams fail in different ways.
+- The checks assume a view close to top-down onto one layer of bars. Depth (Depth Anything) is the next step for telling the layers apart.
 
 ## Tested so far (20 Nov 2026, laptop CPU)
 
 - SORD shards 0–1: 200 images, about 24,000 labelled objects, converted to YOLO-seg.
 - 3-epoch CPU test training: the pipeline runs end to end. The scores are low, as expected from 3 epochs on 100 images. Use them only as proof that the pipeline works.
 - `live.py` on a test video with markers pasted in: 4/4 markers found, scale measured at 1.053 mm/px (about 1.04 expected), READY shown only once the camera was still, captures saved. 0.7 fps on this laptop's CPU while training ran alongside; a phone with the exported model will be far faster.
-- Not tested yet: `upload` and `pull` (need the Roboflow key), GPU training, `export` to CoreML.
+- `check` on made-up captures (tests in `tests/test_check.py`): a missing bar, a shifted bar, a thin bar, a 90° hook and a short tail are each found; a cage as scheduled has none.
+- Not tested yet: `upload` and `pull` (need the Roboflow key), GPU training, `export` to CoreML, `check` on a real capture from the trained model.
