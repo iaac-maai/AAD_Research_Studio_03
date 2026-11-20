@@ -1,0 +1,11 @@
+{
+  "element": "Column C1, skewer mock-up",
+  "bar_diameter_mm": 16,
+  "bar_count": 6,
+  "bar_spacing_mm": 150,
+  "spacing_tol_mm": 10,
+  "diameter_tol_mm": 4,
+  "tie_diameter_mm": 8,
+  "hook_angle": 135,
+  "hook_tail_factor": 10
+}
