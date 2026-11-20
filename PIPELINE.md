@@ -15,9 +15,13 @@ One script, `pipeline.py`, runs every stage. Each stage reads what the stage bef
 ```bash
 py -3.13 -m venv .venv
 .venv\Scripts\activate                       # bash: source .venv/Scripts/activate
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
-pip install ultralytics roboflow huggingface_hub opencv-python
+pip install torch==2.15.0 torchvision==0.29.2 --index-url https://download.pytorch.org/whl/cpu
+pip install -r requirements.txt
+python -m concrete_evidence.privacy --fetch   # face model (230 KB, MIT) for blurring workers' faces
 ```
+
+Every saved frame has faces blurred first (GDPR). Without the face model, frame
+extraction and captures stop with an error rather than save a face unblurred.
 
 For the stages that talk to Roboflow, set your own key in the terminal. Never put it in a file.
 

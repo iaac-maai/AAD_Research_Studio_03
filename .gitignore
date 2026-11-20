@@ -5,3 +5,8 @@ __pycache__/
 runs/
 *.pt
 live/captures/
+docs/feedback/
+models/
+.pytest_cache/
+.ruff_cache/
+*.part

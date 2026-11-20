@@ -3,21 +3,18 @@ Turn site or mock-up videos into frames worth labelling.
 
     python training/extract_frames.py cage_walk.mp4 more.mov --out data/frames --every 0.5
 
-Keeps one frame every --every seconds, then drops frames that are
-  - blurry (variance of the Laplacian below --min-sharp), and
-  - near-duplicates of the last kept frame (mean pixel change below --min-change).
-Upload what's left to the Roboflow project and label bar / tie / hook_90 / hook_135.
+Keeps one frame every --every seconds, drops blurry frames and near-duplicates,
+and blurs faces before saving (workers are in site videos; see
+concrete_evidence/privacy.py). Upload what's left to the Roboflow project.
 """
 
 import argparse
+import sys
 from pathlib import Path
 
-import cv2
-import numpy as np
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-
-def sharpness(gray):
-    return float(cv2.Laplacian(gray, cv2.CV_64F).var())
+from concrete_evidence.frames import extract  # noqa: E402
 
 
 def main():
@@ -28,45 +25,19 @@ def main():
     p.add_argument("--min-sharp", type=float, default=80.0, help="blur cut-off; raise it to keep fewer frames")
     p.add_argument("--min-change", type=float, default=6.0, help="duplicate cut-off (mean grey-level change)")
     p.add_argument("--max-side", type=int, default=1600, help="resize so the long side is at most this")
+    p.add_argument("--keep-faces", action="store_true", help="don't blur faces (only for frames without people)")
     a = p.parse_args()
 
-    out = Path(a.out)
-    out.mkdir(parents=True, exist_ok=True)
-    total_kept = 0
+    total = 0
     for v in a.videos:
-        cap = cv2.VideoCapture(v)
-        if not cap.isOpened():
-            print(f"skip {v}: can't open")
+        try:
+            r = extract(v, a.out, a.every, a.min_sharp, a.min_change, a.max_side, blur_faces=not a.keep_faces)
+        except FileNotFoundError as e:
+            print(f"skip {v}: {e}")
             continue
-        fps = cap.get(cv2.CAP_PROP_FPS) or 30
-        step = max(1, int(round(fps * a.every)))
-        stem, idx, kept, blurry, dupes, last = Path(v).stem, 0, 0, 0, 0, None
-        while True:
-            ok, frame = cap.read()
-            if not ok:
-                break
-            idx += 1
-            if (idx - 1) % step:
-                continue
-            h, w = frame.shape[:2]
-            s = a.max_side / max(h, w)
-            if s < 1:
-                frame = cv2.resize(frame, (int(w * s), int(h * s)), interpolation=cv2.INTER_AREA)
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            if sharpness(gray) < a.min_sharp:
-                blurry += 1
-                continue
-            small = cv2.resize(gray, (160, 120))
-            if last is not None and float(np.mean(cv2.absdiff(small, last))) < a.min_change:
-                dupes += 1
-                continue
-            last = small
-            cv2.imwrite(str(out / f"{stem}_{idx:06d}.jpg"), frame, [cv2.IMWRITE_JPEG_QUALITY, 92])
-            kept += 1
-        cap.release()
-        total_kept += kept
-        print(f"{v}: kept {kept}, dropped {blurry} blurry and {dupes} near-duplicates")
-    print(f"{total_kept} frames in {out}")
+        total += r.kept
+        print(f"{v}: kept {r.kept}, dropped {r.blurry} blurry and {r.duplicates} near-duplicates")
+    print(f"{total} frames in {a.out}")
 
 
 if __name__ == "__main__":

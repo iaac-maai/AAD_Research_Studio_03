@@ -1,0 +1,27 @@
+[project]
+name = "concrete-evidence"
+version = "0.1.0"
+description = "Rebar checks before the pour: find missing or shifted bars, spacing, ties and cover from site video."
+requires-python = ">=3.13"
+readme = "README.md"
+
+[tool.setuptools]
+packages = ["concrete_evidence"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+extend-exclude = ["data", "runs", ".venv", "*.ipynb"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "I"]
+ignore = [
+    "E702",  # pipeline.py keeps each argparse stage on one line on purpose
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["concrete_evidence"]
