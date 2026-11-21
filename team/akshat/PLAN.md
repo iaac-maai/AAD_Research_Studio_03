@@ -26,6 +26,8 @@ Paste this file into your Claude session as the brief. Repo: `iaac-maai/AAD_Rese
 | 12 | Wire in Akanksha's result page: confirm / reject per fault saved to D1 | 10; her page (Sun 12:00) | **Sun 21:00** | the team: app done end to end | live app |
 | 13 | Update the team board and write Monday's plan | — | Sun 23:00 | the team | `team/akshat/` |
 | 14 | Swap in Diego's model: export `best.pt` to ONNX, check ONNX = PyTorch, upload to Hugging Face, set `MODEL_REPO` | Diego's `best.pt` (Mon 10:00) | Mon 12:00 | the team (Thursday demo) | live app on the real model |
+| 15 | UI layer: restyle `03_app/public/` in the user-journey design's look (https://claude.ai/artifact/9Sx4wLkfzPwzhuerVaCcCE); site worker and engineer screens first | design review (Diego, Akanksha, Sun 23:00); your task 12 | **Tue 18:00** | the team (freeze Wed) | live app in the new look |
+| 16 | Architect and client screens, only if the core app works; else show them as the design | your task 15 | Wed 18:00 | Thursday demo | extra screens or the design |
 
 ## Hand-offs
 
