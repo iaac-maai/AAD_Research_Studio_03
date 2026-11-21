@@ -47,7 +47,7 @@ def load_model():
             path = hf_hub_download(repo, file)
         except Exception as e:  # a wrong name and a private repo both end here
             raise SystemExit(f"could not download {file} from Hugging Face repo {repo}: check the name, "
-                             f"and for a private repo set HF_TOKEN ({type(e).__name__})")
+                             f"and for a private repo set HF_TOKEN ({type(e).__name__})") from None
     if not path:
         path = str(ROOT / "models" / "best.onnx")
     if not Path(path).exists():
