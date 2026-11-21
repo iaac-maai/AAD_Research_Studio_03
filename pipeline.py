@@ -10,6 +10,7 @@ Stages, in order:
   conrebseg  unpack + convert ConRebSeg (repair sites, CC BY 4.0): optional warm-up, exposed_rebar patches
   sord       download + convert SORD (synthetic, CC BY-NC): optional, for quick tests
   pull       download your labelled Roboflow version as YOLO-seg           (needs ROBOFLOW_API_KEY)
+  depth      Depth Anything before YOLO: grey out what is far behind the cage (photos or a whole dataset)
   train      fine-tune on your labels (the baseline), or an optional warm-up on ConRebSeg / SORD
   eval       score a model on a dataset's val split -> JSON
   export     best.pt -> CoreML (iPhone) / TFLite (Android) / ONNX (server)
@@ -22,10 +23,11 @@ Example run, start to finish:
   python pipeline.py upload
       ... label bar / tie / hook_90 / hook_135 in Roboflow, then Generate a version ...
   python pipeline.py pull --version 1
+  python pipeline.py depth data/ours --out data/ours_depth   # optional: train on depth-filtered photos
   python pipeline.py train --stage finetune          # baseline; better in Colab (GPU)
   python pipeline.py eval
   python pipeline.py export --format coreml
-  python pipeline.py live --source 0
+  python pipeline.py live --source 0                 # add --depth-filter if you trained on data/ours_depth
   python pipeline.py check --schedule live/schedule_example.json     # latest capture
   python pipeline.py check --schedule live/schedule_example.json --zone middle --face A
 
@@ -134,6 +136,20 @@ def st_conrebseg(a):
     print(f"wrote {PATHS['conrebseg_yolo'] / 'data.yaml'}")
 
 
+def st_depth(a):
+    from concrete_evidence import depth as dp
+    src = Path(a.source)
+    if not src.exists():
+        raise SystemExit(f"{src} not found: give a photo, a folder of photos or a YOLO dataset folder.")
+    out = Path(a.out) if a.out else src.with_name(src.stem + "_depth")
+    print(f"loading {dp.MODEL_ID} (Apache-2.0); first run downloads about 100 MB")
+    model = dp.DepthAnything(device=a.device)
+    res = dp.filter_folder(model, src, out, a.threshold, a.margin, a.slices, a.preview)
+    kept = [f["kept"] for f in res["files"].values()]
+    avg = f", on average {100 * sum(kept) / len(kept):.0f}% of each photo kept" if kept else ""
+    print(f"{res['images']} photo(s) filtered{avg} -> {out}")
+
+
 def st_pull(a):
     from roboflow import Roboflow
     proj = Roboflow(api_key=need_key()).workspace(RF_WORKSPACE).project(RF_PROJECT)
@@ -191,6 +207,8 @@ def st_live(a):
     args = ["live/live.py", "--model", a.model or best_model(), "--source", a.source, "--imgsz", a.imgsz]
     if a.auto:
         args.append("--auto")
+    if a.depth_filter:
+        args.append("--depth-filter")
     run(PY, *args)
 
 
@@ -245,6 +263,15 @@ def main():
     s = sub.add_parser("pull", help="labelled Roboflow version -> data/ours")
     s.add_argument("--version", type=int, required=True); s.set_defaults(fn=st_pull)
 
+    s = sub.add_parser("depth", help="Depth Anything before YOLO: grey out the far background")
+    s.add_argument("source", help="a photo, a folder of photos, or a YOLO dataset folder (labels are kept)")
+    s.add_argument("--out", default=None, help="default: <source>_depth next to it")
+    s.add_argument("--threshold", type=float, default=None, help="nearness to keep, 0-1 (default: automatic)")
+    s.add_argument("--margin", type=int, default=15, help="grow the kept area by this many px")
+    s.add_argument("--slices", type=int, default=0, help="also write N depth slices (layers), nearest first")
+    s.add_argument("--preview", action="store_true", help="also write colour depth pictures")
+    s.add_argument("--device", default=None); s.set_defaults(fn=st_depth)
+
     s = sub.add_parser("train", help="fine-tune on our labels, or an optional warm-up")
     s.add_argument("--stage", choices=["pretrain", "finetune"], required=True)
     s.add_argument("--data", choices=["conrebseg", "sord"], default="conrebseg", help="pretraining set")
@@ -265,6 +292,7 @@ def main():
     s = sub.add_parser("live", help="run on webcam / stream / video")
     s.add_argument("--source", default="0"); s.add_argument("--model", default=None)
     s.add_argument("--imgsz", type=int, default=640); s.add_argument("--auto", action="store_true")
+    s.add_argument("--depth-filter", action="store_true", help="Depth Anything before YOLO on every frame")
     s.set_defaults(fn=st_live)
 
     s = sub.add_parser("check", help="captured frame vs bending schedule -> faults")

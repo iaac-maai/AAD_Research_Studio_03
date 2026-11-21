@@ -10,3 +10,4 @@ torchvision==0.29.2
 ultralytics==8.4.216
 roboflow==1.7.3
 huggingface_hub==2.4.0
+transformers==5.22.2  # Depth Anything V2 Small (pipeline.py depth, live --depth-filter)
