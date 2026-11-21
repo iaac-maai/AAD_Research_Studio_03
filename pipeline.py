@@ -7,10 +7,10 @@ Stages, in order:
   markers    print the 4 ArUco markers (A4, 100 mm)
   frames     site / mock-up videos -> sharp, non-duplicate frames to label
   upload     send those frames to the Roboflow project for labelling      (needs ROBOFLOW_API_KEY)
-  conrebseg  unpack + convert ConRebSeg (real sites, CC BY 4.0), the pre-training set
+  conrebseg  unpack + convert ConRebSeg (repair sites, CC BY 4.0): optional warm-up, exposed_rebar patches
   sord       download + convert SORD (synthetic, CC BY-NC): optional, for quick tests
   pull       download your labelled Roboflow version as YOLO-seg           (needs ROBOFLOW_API_KEY)
-  train      pretrain on ConRebSeg (or SORD), or fine-tune on your labels
+  train      fine-tune on your labels (the baseline), or an optional warm-up on ConRebSeg / SORD
   eval       score a model on a dataset's val split -> JSON
   export     best.pt -> CoreML (iPhone) / TFLite (Android) / ONNX (server)
   live       run the model on a webcam, phone stream or video; press C to capture a frame
@@ -21,10 +21,8 @@ Example run, start to finish:
   python pipeline.py frames videos/*.mp4
   python pipeline.py upload
       ... label bar / tie / hook_90 / hook_135 in Roboflow, then Generate a version ...
-  python pipeline.py conrebseg                       # after downloading it to data/conrebseg
-  python pipeline.py train --stage pretrain          # better in Colab (GPU)
   python pipeline.py pull --version 1
-  python pipeline.py train --stage finetune
+  python pipeline.py train --stage finetune          # baseline; better in Colab (GPU)
   python pipeline.py eval
   python pipeline.py export --format coreml
   python pipeline.py live --source 0
@@ -146,13 +144,15 @@ def st_train(a):
     if a.stage == "pretrain":
         data, start, name = PATHS[f"{a.data}_yolo"] / "data.yaml", a.model or "yolov8n-seg.pt", "pretrain"
     else:
+        # The baseline starts from the standard pretrained weights. A warm-up (ConRebSeg / SORD) is opt-in
+        # with --model runs/pretrain/weights/best.pt, so the two can be compared on the same split.
         data, name = PATHS["ours"] / "data.yaml", "finetune"
-        start = a.model or (PRETRAIN if PRETRAIN.exists() else "yolov8n-seg.pt")
+        start = a.model or "yolov8n-seg.pt"
     if not Path(data).exists():
         raise SystemExit(f"{data} not found. Run the 'conrebseg', 'sord' or 'pull' stage first.")
     device = a.device or ("0" if has_gpu() else "cpu")
     if device == "cpu" and not a.force_cpu:
-        raise SystemExit("No CUDA GPU here. Train in Colab (training/train_sord_yolov8seg.ipynb),\n"
+        raise SystemExit("No CUDA GPU here. Train in Colab (training/train_rebar_yolov8seg.ipynb),\n"
                          "or add --force-cpu for a short test run (e.g. --epochs 3 --imgsz 640).")
     from ultralytics import YOLO  # imported late so the checks above run without it
 
@@ -241,7 +241,7 @@ def main():
     s = sub.add_parser("pull", help="labelled Roboflow version -> data/ours")
     s.add_argument("--version", type=int, required=True); s.set_defaults(fn=st_pull)
 
-    s = sub.add_parser("train", help="pretrain on SORD or fine-tune on our labels")
+    s = sub.add_parser("train", help="fine-tune on our labels, or an optional warm-up")
     s.add_argument("--stage", choices=["pretrain", "finetune"], required=True)
     s.add_argument("--data", choices=["conrebseg", "sord"], default="conrebseg", help="pretraining set")
     s.add_argument("--model", default=None); s.add_argument("--epochs", type=int, default=50)

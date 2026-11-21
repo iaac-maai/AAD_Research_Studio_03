@@ -1,7 +1,13 @@
 """ConRebSeg (DTU, CC BY 4.0) -> YOLO-seg.
 
-ConRebSeg: real construction-site photos with exposed rebar, segmented.
+ConRebSeg: real site photos of concrete repair work (bridge undersides,
+shotcrete), where rebar shows through damaged concrete.
 Schmidt & Nalpantidis (2025), Automation in Construction 171. Data DOI 10.11583/DTU.26213762.
+
+What its labels are: "ExposedBars" outlines a *patch* of exposed rebar, often
+several bars in one shape. There are no cages before a pour and no single-bar
+outlines. So it is NOT training data for our `bar` class. We keep it as
+`exposed_rebar`: an optional warm-up for how real rebar looks in dirt and shadow.
 
 The download is ConRebSeg.zip (the images) and samples.json, a FiftyOne export:
 one record per image with its split tag (train / val / test) and every object's
@@ -10,7 +16,7 @@ stored as a zlib-compressed .npy array, base64 in the JSON.
 
 We keep the self-collected sequences (langebro, vester_sogade) and skip the
 YouTube frames, which have no clear licence. Labels kept by default:
-ExposedBars -> bar. Person, car and truck are dropped: the project is only rebar.
+ExposedBars -> exposed_rebar. Person, car and truck are dropped: the project is only rebar.
 """
 
 from __future__ import annotations
@@ -28,7 +34,7 @@ import numpy as np
 
 from .convert import _link, polygon_line
 
-DEFAULT_CLASSES = {"ExposedBars": "bar"}
+DEFAULT_CLASSES = {"ExposedBars": "exposed_rebar"}  # patches, not single bars: never call these `bar`
 SPLITS = ("train", "val", "test")
 SELF_COLLECTED = ("data/langebro/", "data/vester_sogade/")
 
@@ -84,15 +90,31 @@ def iter_samples(samples_json: str | Path, include_youtube: bool = False):
             yield s
 
 
-def extract(zip_path: str | Path, root: str | Path, include_youtube: bool = False) -> int:
-    """Unpack the images we use from ConRebSeg.zip into root. Returns files written."""
+def zip_to_filepath(name: str) -> str | None:
+    """A member of ConRebSeg.zip -> the path samples.json uses, or None if it isn't a site photo.
+
+    The zip holds ConRebSeg/langebro/run_x/frame.jpg; samples.json says data/langebro/run_x/frame.jpg.
+    """
+    parts = name.replace("\\", "/").split("/")
+    sites = [p.split("/")[1] for p in SELF_COLLECTED]
+    for i, part in enumerate(parts):
+        if part in sites:
+            return "/".join(["data", *parts[i:]])
+    return None
+
+
+def extract(zip_path: str | Path, root: str | Path) -> int:
+    """Unpack the site photos (no YouTube) from ConRebSeg.zip into root/data/<site>/...
+
+    Laid out as samples.json expects. Returns the number of files written.
+    """
     root, n = Path(root), 0
     with zipfile.ZipFile(zip_path) as zf:
         for info in zf.infolist():
-            name = info.filename.replace("\\", "/")
-            if info.is_dir() or not (include_youtube or any(p in name for p in SELF_COLLECTED)):
+            fp = None if info.is_dir() else zip_to_filepath(info.filename)
+            if fp is None:
                 continue
-            dst = root / name
+            dst = root / fp
             if dst.resolve().is_relative_to(root.resolve()) and not dst.exists():  # no paths outside root
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 with zf.open(info) as src, open(dst, "wb") as out:

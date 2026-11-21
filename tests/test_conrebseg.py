@@ -49,12 +49,19 @@ def dataset(tmp_path):
                           ("data/youtube/xyz/frame_0001.jpg", "train")]:
             img = tmp_path / "img.jpg"
             Image.fromarray(np.zeros((100, 100, 3), np.uint8)).save(img)
-            zf.write(img, fp)
+            zf.write(img, fp.replace("data/", "ConRebSeg/", 1))  # the real zip's layout differs from the index
             samples.append({"filepath": fp, "tags": [split], "metadata": {"width": 100, "height": 100},
                             "gt_annotations": {"detections": [det("ExposedBars", [0.5, 0.25, 0.1, 0.4], bar),
                                                               det("person", [0.1, 0.1, 0.1, 0.2], person)]}})
     (root / "samples.json").write_text(json.dumps({"samples": samples}))
     return root
+
+
+def test_zip_names_map_to_index_paths():
+    assert crs.zip_to_filepath("ConRebSeg/langebro/run_1/a.jpg") == "data/langebro/run_1/a.jpg"
+    assert crs.zip_to_filepath("ConRebSeg/vester_sogade/r/b.jpg") == "data/vester_sogade/r/b.jpg"
+    assert crs.zip_to_filepath("ConRebSeg/README.txt") is None
+    assert crs.zip_to_filepath("ConRebSeg/youtube/x/f.jpg") is None
 
 
 def test_extract_skips_youtube(dataset):
@@ -63,7 +70,7 @@ def test_extract_skips_youtube(dataset):
     assert not (dataset / "data/youtube").exists()
 
 
-def test_convert_keeps_only_bars(dataset, tmp_path):
+def test_convert_keeps_only_rebar_patches(dataset, tmp_path):
     crs.extract(dataset / "ConRebSeg.zip", dataset)
     out = tmp_path / "yolo"
     stats = crs.convert(dataset, out)
@@ -71,7 +78,7 @@ def test_convert_keeps_only_bars(dataset, tmp_path):
     assert stats["dropped_person"] == 2
     label = (out / "labels/train/langebro__run_1__a.txt").read_text().splitlines()
     assert len(label) == 1 and label[0].startswith("0 ")
-    assert "names:\n  0: bar" in (out / "data.yaml").read_text()
+    assert "names:\n  0: exposed_rebar" in (out / "data.yaml").read_text()  # patches, never `bar`
 
 
 def test_limit_per_split(dataset, tmp_path):
