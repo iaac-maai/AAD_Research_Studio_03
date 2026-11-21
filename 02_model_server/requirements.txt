@@ -1,0 +1,11 @@
+# Model server. CPU-only torch keeps the install small (no CUDA libraries).
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.15.0+cpu
+torchvision==0.29.2+cpu
+ultralytics==8.4.216
+gradio==6.32.0
+huggingface_hub==2.4.0
+numpy==2.5.4
+opencv-python-headless==5.1.0.95
+pillow==13.0.0
+PyYAML==6.0.3

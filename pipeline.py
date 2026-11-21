@@ -16,6 +16,7 @@ Stages, in order:
   export     best.pt -> CoreML (iPhone) / TFLite (Android) / ONNX (server)
   live       run the model on a webcam, phone stream or video; press C to capture a frame
   check      a captured frame against the bar bending schedule -> faults for a person to confirm
+  analyse    the whole check on one photo (what the model server runs): photo -> faults + fix list
 
 Example run, start to finish:
   python pipeline.py markers
@@ -30,6 +31,7 @@ Example run, start to finish:
   python pipeline.py live --source 0                 # add --depth-filter if you trained on data/ours_depth
   python pipeline.py check --schedule live/schedule_example.json     # latest capture
   python pipeline.py check --schedule live/schedule_example.json --zone middle --face A
+  python pipeline.py analyse photo.jpg --schedule live/schedule_example.json --face A
 
 The API key is read from the environment only. Never write it into a file in this repo.
 """
@@ -236,6 +238,36 @@ def st_check(a):
     print(summary(result), f"\nwrote {out}")
 
 
+def st_analyse(a):
+    import cv2
+
+    from concrete_evidence.check import load_schedule, summary
+    from concrete_evidence.infer import analyse
+    img = cv2.imread(a.photo)
+    if img is None:
+        raise SystemExit(f"Could not read the photo {a.photo}")
+    try:
+        schedule = load_schedule(a.schedule)
+    except (OSError, ValueError) as e:
+        raise SystemExit(f"Schedule {a.schedule}: {e}") from e
+    from ultralytics import YOLO
+    model = YOLO(a.model or best_model())
+    depth = None
+    if a.depth_filter:
+        from concrete_evidence.depth import DepthAnything
+        depth = DepthAnything()
+    try:
+        rename = dict(kv.split("=", 1) for kv in a.rename)
+        out = analyse(img, schedule, model, depth=depth, zone=a.zone, face=a.face, conf=a.conf, imgsz=a.imgsz,
+                      rename=rename)
+    except (FileNotFoundError, ValueError) as e:
+        raise SystemExit(str(e)) from e
+    stem = Path(a.photo).with_suffix("")
+    cv2.imwrite(f"{stem}_checked.jpg", out.pop("annotated"))
+    Path(f"{stem}_checked.json").write_text(json.dumps(out, indent=2))
+    print(summary(out["check"]), f"\nwrote {stem}_checked.jpg and {stem}_checked.json")
+
+
 # --------------------------------------------------------------------- cli ---
 
 def main():
@@ -302,6 +334,15 @@ def main():
                    help="column zone in the photo: end (near a floor, the default) or middle")
     s.add_argument("--face", default=None, help="which face of the column, e.g. A or north")
     s.set_defaults(fn=st_check)
+
+    s = sub.add_parser("analyse", help="the whole check on one photo -> faults + fix list")
+    s.add_argument("photo"); s.add_argument("--schedule", required=True)
+    s.add_argument("--model", default=None); s.add_argument("--zone", choices=["end", "middle"], default=None)
+    s.add_argument("--face", default=None); s.add_argument("--conf", type=float, default=0.25)
+    s.add_argument("--imgsz", type=int, default=640)
+    s.add_argument("--depth-filter", action="store_true", help="Depth Anything before YOLO")
+    s.add_argument("--rename", nargs="*", default=[], help="model class=our class, e.g. skewer=bar")
+    s.set_defaults(fn=st_analyse)
 
     a = p.parse_args()
     a.fn(a)
