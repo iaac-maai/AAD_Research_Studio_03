@@ -40,11 +40,11 @@ These appear on Roboflow Universe under CC BY 4.0 according to search listings, 
 
 | Project | Why it's useful | Checked |
 |---|---|---|
-| [roomsegment/rebar-seg](https://universe.roboflow.com/roomsegment/rebar-seg) | Rebar **segmentation** masks (701 or 1,399 images, depending on version) | not yet |
-| [ntu-ks0ac/rebar-segment-ysgc1](https://universe.roboflow.com/ntu-ks0ac/rebar-segment-ysgc1) | Classes `intersection`, `spacing`: same idea as SORD, but real photos | not yet |
-| [new-workspace-eeam1/yolo-eio1c](https://universe.roboflow.com/new-workspace-eeam1/yolo-eio1c) | Classes `rebar-cross`, `tie-wire`: the only public **tie-wire** labels found | not yet |
-| [capstone-04lit/rebar-intersection-detect](https://universe.roboflow.com/capstone-04lit/rebar-intersection-detect) | Rebar crossings (boxes) | not yet |
-| [sitevision-tnmlg/rebar-3dl2l](https://universe.roboflow.com/sitevision-tnmlg/rebar-3dl2l) | General rebar on site, 701 images | not yet |
+| [roomsegment/rebar-seg](https://universe.roboflow.com/roomsegment/rebar-seg) | Rebar **segmentation** masks (701 or 1,399 images, depending on version) | ✅ 21 Nov: CC BY 4.0, polygons per bar, 701 images, class `rebar`. Mostly slab meshes. All 701 forked, `rebar` → `bar` |
+| [ntu-ks0ac/rebar-segment-ysgc1](https://universe.roboflow.com/ntu-ks0ac/rebar-segment-ysgc1) | Classes `intersection`, `spacing`: same idea as SORD, but real photos | ❌ 21 Nov: CC BY 4.0 but **boxes**, 100 images, none of our classes. Skip |
+| [new-workspace-eeam1/yolo-eio1c](https://universe.roboflow.com/new-workspace-eeam1/yolo-eio1c) | Classes `rebar-cross`, `tie-wire`: the only public **tie-wire** labels found | ❌ 21 Nov: CC BY 4.0 but **boxes**, 73 images. Tie-wire isn't our `tie` (the stirrup). Skip |
+| [capstone-04lit/rebar-intersection-detect](https://universe.roboflow.com/capstone-04lit/rebar-intersection-detect) | Rebar crossings (boxes) | ❌ 21 Nov: CC BY 4.0, boxes, 99 images, class `intersection`. Skip |
+| [sitevision-tnmlg/rebar-3dl2l](https://universe.roboflow.com/sitevision-tnmlg/rebar-3dl2l) | General rebar on site, 701 images | ✅ 21 Nov: CC BY 4.0, polygons per bar, **358** images, classes `rebar`, `rebars`. Column starter bars: closest to our columns. 36 forked so far, `rebar` → `bar` |
 
 ## Not usable (no open licence): reference only
 
