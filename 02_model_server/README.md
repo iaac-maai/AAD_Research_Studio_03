@@ -27,6 +27,7 @@ MODEL_PATH=models/best.onnx python 02_model_server/app.py   # http://127.0.0.1:7
 |---|---|
 | `MODEL_PATH` | a local `.onnx` (ONNX Runtime) or `.pt` (needs Ultralytics); default `models/best.onnx` |
 | `MODEL_REPO`, `MODEL_FILE` | download the model from Hugging Face instead, e.g. `iaac-maai/concrete-evidence-rebar` + `best.onnx` |
+| `HF_TOKEN` | only if the Hugging Face repo is private: a read token, set as a secret in Render (never in a file) |
 | `CLASS_RENAME` | model class = our class, e.g. `skewer=bar` for the skewer stand-in |
 | `DEPTH_FILTER` | `1` runs Depth Anything V2 Small (ONNX, Apache-2.0) before YOLO. Off on the free plan (memory below) |
 
@@ -44,6 +45,10 @@ Then upload `best.onnx` to Hugging Face (`iaac-maai`) and set `MODEL_REPO`. Noth
 `render.yaml` at the repo root is the Blueprint: render.com → New → Blueprint → this repo → Frankfurt. Set
 `MODEL_REPO` (and `CLASS_RENAME` for the stand-in) when Render asks. The free plan sleeps after 15 minutes; the
 first call after that takes about a minute while it wakes. The Cloudflare app shows "the model is waking up".
+
+The stand-in's model card is [`MODEL_CARD_stand_in.md`](MODEL_CARD_stand_in.md): it goes up as the Hugging Face
+repo's `README.md`, next to `best.onnx` (the skewer model renamed). Tested on 21 Nov: a fresh cache downloads
+from Hugging Face without a login (public repo); a wrong repo name stops the server with one clear line.
 
 ## Tested (21 Nov 2026, laptop CPU, Windows; skewer stand-in on `extra_01.jpg`, 1280 × 960)
 
