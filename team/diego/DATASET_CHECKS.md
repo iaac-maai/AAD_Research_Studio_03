@@ -18,9 +18,9 @@ Our Roboflow project: **`concrete-evidence-column-cages`** (instance segmentatio
 
 | Project | Licence | Status |
 |---|---|---|
-| [steelbinding-for-rcc/SteelBindings](https://universe.roboflow.com/steelbinding-for-rcc/steelbindings) | CC BY 4.0 | 303 cloned, in "Unassigned": not in the dataset yet. Redraw `Lateral-Ties` / `Stirrup` as `tie` polygons |
-| [Column Tie Detection](https://universe.roboflow.com/column-tie-detection/custom-workflow-object-detection-yhfbh) | CC BY 4.0 | not cloned yet |
-| [stirrup-recognition-dataset](https://universe.roboflow.com/jiawens-workspace/stirrup-recognition-dataset) | CC BY 4.0 | not cloned yet |
+| [stirrup-recognition-dataset](https://universe.roboflow.com/jiawens-workspace/stirrup-recognition-dataset) | CC BY 4.0 | **Use.** One box per loose stirrup on a plain floor, hooks visible: the best source for `tie` and hooks. Forked to `diegos-workspace-puwbt/stirrup-recognition-dataset-w9jig`, version 1 (no preprocessing). `box_to_polygons.ipynb` turns the boxes into `tie` outlines with SAM 2.1 |
+| [Column Tie Detection](https://universe.roboflow.com/column-tie-detection/custom-workflow-object-detection-yhfbh) | CC BY 4.0 | **Skip.** Its `Tie` / `No Tie` / `PartialTie` boxes are small boxes on **tie-wire knots at bar crossings**, not stirrups |
+| [steelbinding-for-rcc/SteelBindings](https://universe.roboflow.com/steelbinding-for-rcc/steelbindings) | CC BY 4.0 | **Weak.** `Stirrup` / `Lateral-Ties` boxes cover a whole zone of stirrups, not one each. 303 cloned into "Unassigned"; leave them out of the dataset (or label a few by hand) |
 
 ## Project state, Sat 21 Nov 15:30
 
@@ -32,3 +32,4 @@ Our Roboflow project: **`concrete-evidence-column-cages`** (instance segmentatio
 - rebar-seg, by roomsegment, Roboflow Universe (2024).
 - Rebar, by SiteVision, Roboflow Universe.
 - SteelBindings, by steelbinding-for-rcc, Roboflow Universe.
+- stirrup-recognition-dataset, by jiawens Workspace, Roboflow Universe.

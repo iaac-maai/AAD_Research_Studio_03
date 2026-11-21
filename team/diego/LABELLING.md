@@ -5,8 +5,8 @@ Four classes, all **polygons**: `bar · tie · hook_90 · hook_135`.
 | Class | What it is | Label it |
 |---|---|---|
 | `bar` | A longitudinal bar | One polygon per visible bar. Two bars that cross are two polygons |
-| `tie` | **The stirrup** (column tie / link): the closed loop around the longitudinal bars | One polygon per visible stirrup, without its bent ends |
-| `hook_90` | Bent end of a stirrup at about 90° | Its own polygon, from the bend to the tip |
+| `tie` | **The stirrup** (column tie / link): the closed loop around the longitudinal bars | One polygon per visible stirrup, **including** its bent ends (that's what Segment Anything outlines from a box, so hand and auto labels match). Leave the inside of the loop unlabelled |
+| `hook_90` | Bent end of a stirrup at about 90° | Its own polygon, from the bend to the tip, drawn **on top of** the `tie` (overlap is fine in instance segmentation) |
 | `hook_135` | Bent end of a stirrup at about 135° (the seismic hook Eurocode 8 asks for) | Same |
 
 **`tie` is the stirrup, not the tie-wire at a crossing.** Confirmed 21 Nov from the code: `concrete_evidence/check.py` (`check_ties`) sorts every `tie` along the column and measures the gaps against the Eurocode 8 tie spacing per zone. Tie-wire knots labelled as `tie` would be counted as extra stirrups and break that check. Tie-wire is **not labelled**. (`docs/HANDOVER_DIEGO.md` still says "the wire at a crossing": that line is out of date.)
@@ -15,7 +15,7 @@ Four classes, all **polygons**: `bar · tie · hook_90 · hook_135`.
 
 - Don't outline hidden parts; don't guess where a bar runs.
 - Smart Polygon for the first outline, then fix the edges by hand.
-- Box-only sets (SteelBindings, Column Tie, stirrups): `Lateral-Ties` / `Stirrup` / `Tie` boxes become `tie` polygons; delete `Beam`, `Column`, `No Tie`, `PartialTie` boxes.
+- Box-only sets: only **stirrup-recognition** is worth converting (one box per stirrup). `box_to_polygons.ipynb` does it with SAM 2.1 and uploads the outlines as `tie` (batch `sam_stirrups`). Column Tie Detection boxes are tie-wire knots, and SteelBindings boxes cover whole zones of stirrups: neither is used.
 - The photos of one fab-lab cage (about 15) are tagged `test` and never trained on.
 
 ## Web photos (source 3)
