@@ -2,6 +2,8 @@
 
 One folder each. Put **your own work** here: your plan, notes, results, scores, small screenshots and diagrams.
 
+**Deadlines and who waits on whom:** [`TIMELINE.md`](TIMELINE.md).
+
 | Folder | Who | Holds |
 |---|---|---|
 | `team/akshat/` | Akshat | plan, model-server and app notes, memory tests, sample results |
