@@ -49,6 +49,8 @@ def parse_args():
     p.add_argument("--no-show", action="store_true", help="no window (for tests / servers)")
     p.add_argument("--out", default=None, help="also write the annotated video here (.mp4)")
     p.add_argument("--max-frames", type=int, default=0, help="stop after N frames (0 = no limit)")
+    p.add_argument("--depth-filter", action="store_true",
+                   help="Depth Anything before YOLO: grey out the far background (train on filtered photos too)")
     return p.parse_args()
 
 
@@ -82,6 +84,10 @@ def main():
     from ultralytics import YOLO  # heavy; only needed when the live view runs
 
     model = YOLO(a.model)
+    depth = None
+    if a.depth_filter:
+        from concrete_evidence.depth import DepthAnything, filter_image
+        depth = DepthAnything(device=a.device)
     src = int(a.source) if a.source.isdigit() else a.source
     cap = cv2.VideoCapture(src)
     if not cap.isOpened():
@@ -97,7 +103,8 @@ def main():
         if not ok:
             break
         n += 1
-        result = model.track(frame, persist=True, imgsz=a.imgsz, conf=a.conf, device=a.device,
+        seen = filter_image(frame, depth(frame))["image"] if depth else frame
+        result = model.track(seen, persist=True, imgsz=a.imgsz, conf=a.conf, device=a.device,
                              tracker="bytetrack.yaml", verbose=False, retina_masks=False,
                              max_det=500)[0]  # dense cages: SORD frames hold up to ~430 objects
         found = markers.find(frame)
