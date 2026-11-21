@@ -1,6 +1,6 @@
 # Work plan: Diego, Sat 21 – Sun 22 Nov 2026
 
-Paste this file into your Claude session as the brief. Repo: `iaac-maai/AAD_Research_Studio_03`. Read `team/README.md`, `datasets/CATALOGUE.md` ("The plan without site access") and `docs/HANDOVER_DIEGO.md` first.
+Paste this file into your Claude session as the brief. Repo: `iaac-maai/AAD_Research_Studio_03`. Read `team/README.md`, `datasets/CATALOGUE.md` ("The plan without site access") and `team/diego/HANDOVER.md` first.
 
 **Your role:** the data and the first trained model. We have no site access, so the labelled set comes from open data online, open-licence photos and a fab-lab mock-up. Akshat needs a first `best.pt` on Mon 23 Nov.
 
