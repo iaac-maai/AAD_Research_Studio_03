@@ -1,11 +1,16 @@
 {
-  "element": "Column C1, skewer mock-up",
+  "element": "Column C1",
+  "column_mm": [400, 400],
+  "cover_mm": 30,
+  "clear_height_mm": 3000,
+  "ductility": "DCM",
   "bar_diameter_mm": 16,
-  "bar_count": 6,
-  "bar_spacing_mm": 150,
+  "bar_count": 3,
+  "bar_spacing_mm": 155,
+  "tie_diameter_mm": 8,
+  "tie_spacing_mm": {"end": 100, "middle": 200},
   "spacing_tol_mm": 10,
   "diameter_tol_mm": 4,
-  "tie_diameter_mm": 8,
   "hook_angle": 135,
   "hook_tail_factor": 10
 }

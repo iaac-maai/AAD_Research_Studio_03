@@ -46,7 +46,7 @@ $env:ROBOFLOW_API_KEY = "..."
 | 10 | **Evaluate** | `python pipeline.py eval` | `runs/eval.json`: mask precision, recall, mAP per class. These are the numbers for the `[__]` boxes on the slides. |
 | 11 | **Export** | `python pipeline.py export --format coreml` | Model for the phone (`coreml` iPhone/iPad, `tflite` Android, `onnx` server). |
 | 12 | **Live** | `python pipeline.py live --source 0` | Webcam (or `--source video.mp4`, or a phone stream URL). Masks, a tracking ID per bar, markers, mm scale. Says **READY TO CHECK** when all 4 markers are in view and the camera is still; press **C** to save that frame and its detections in mm to `live/captures/` (faces blurred). |
-| 13 | **Check** | `python pipeline.py check --schedule live/schedule_example.json` | The latest capture against the bar bending schedule: bar count (missing bar), bar size, spacing (shifted or missing bar), hook angle (90° vs 135°) and hook tail length. Writes `<capture>.check.json`, every fault with the bars' tracking ids, for a person to confirm or reject. |
+| 13 | **Check** | `python pipeline.py check --schedule live/schedule_example.json --zone end --face A` | The latest capture against the bar bending schedule and the Eurocode 8 limits: bar count (missing bar), bar size, spacing (shifted or missing bar), tie spacing per column zone, hook angle (90° vs 135°) and hook tail length. Each fault comes with a plain fix instruction. Writes `<capture>.check.json`, every fault with the bars' tracking ids, for a person to confirm or reject. |
 
 Weights and data never go into git (`runs/`, `data/`, `*.pt` are ignored). Keep `best.pt` on the team Google Drive.
 
@@ -71,11 +71,19 @@ The engineer's bar bending schedule says what the cage must be. Write it as JSON
 | Bar size | a bar's width is off the scheduled diameter (markers needed) | wrong bar delivered |
 | Hook angle | a `hook_90` where the schedule says 135° | 90° stirrup hooks opened up in earthquakes, where 135° hooks hold |
 | Hook tail | the hook's outline is shorter than factor × tie diameter | a short tail pulls out |
+| Tie spacing | a gap between neighbouring ties, measured along the bars, is over the zone's limit: the schedule's spacing, capped by Eurocode 8 | ties hold the bars in place and confine the concrete where an earthquake hits hardest, at the column ends |
+| Schedule vs code | the schedule itself asks for wider tie spacing, or other hooks, than Eurocode 8 allows | a design question for the engineer, not a site fix |
 
 - **Scale:** the markers when they are in view. Without them, the scheduled bar diameter over the bars' median width in pixels (rougher, and bar size can't then be checked).
-- **Tail factor:** the example uses 10 × the diameter. Check the figure your code requires (Eurocode 2 / 8 or local) before relying on it.
+- **Eurocode 8 limits** (`concrete_evidence/codes.py`, used when the schedule gives `column_mm`). Recommended values as we read them; national annexes can change them, so an engineer checks them against the code text:
+  - end zones (critical region), length max(longest side, clear height / 6, 450 mm); medium ductility (DCM): ties at most min(core / 2, 175 mm, 8 × bar diameter); high ductility (DCH): min(core / 3, 125 mm, 6 × bar diameter). EN 1998-1 5.4.3.2.2 and 5.5.3.2.2.
+  - middle zone (Eurocode 2): min(20 × bar diameter, smallest column side, 400 mm). EN 1992-1-1 9.5.3.
+  - hooks 135°, tail at least 10 × tie diameter.
+  - For the example 400 × 400 mm column with 16 mm bars, 8 mm ties and 30 mm cover: 128 mm at the ends, 320 mm in the middle, 80 mm hook tails.
+- **Zone and face:** the photo alone can't tell where the floor is or which face it shows. Pass `--zone end|middle` (default `end`, the strictest) and `--face A`, or put `zone` and `face` in the capture.
+- **Fix instructions** (`concrete_evidence/fixes.py`), e.g. *Column C1, face A: Add 2 tie(s) between 100 and 330 mm from the first tie in view (gap 230 mm, at most 100 mm in the end zone).* Positions count from the first tie in view, reading down the photo.
 - **A person decides.** The result is never "approved". It lists faults for someone on site to confirm or reject: the camera can miss a bar hidden behind another (occlusion), and columns and beams fail in different ways.
-- The checks assume a view close to top-down onto one layer of bars. Depth (Depth Anything) is the next step for telling the layers apart.
+- The checks assume a view square onto one face, or top-down onto one layer of bars. Column ties wrap the outside of the cage, so one face is one layer. Depth (Depth Anything) is for footings and slabs with stacked layers: a later step.
 
 ## Tested so far (20 Nov 2026, laptop CPU)
 
@@ -83,4 +91,5 @@ The engineer's bar bending schedule says what the cage must be. Write it as JSON
 - 3-epoch CPU test training: the pipeline runs end to end. The scores are low, as expected from 3 epochs on 100 images. Use them only as proof that the pipeline works.
 - `live.py` on a test video with markers pasted in: 4/4 markers found, scale measured at 1.053 mm/px (about 1.04 expected), READY shown only once the camera was still, captures saved. 0.7 fps on this laptop's CPU while training ran alongside; a phone with the exported model will be far faster.
 - `check` on made-up captures (tests in `tests/test_check.py`): a missing bar, a shifted bar, a thin bar, a 90° hook and a short tail are each found; a cage as scheduled has none.
+- Ties and Eurocode 8 (`tests/test_ties.py`): the limits for a 400 mm column, a missing tie in the end zone and its fix instruction, the same gap passing in the middle zone, a loose schedule capped by the code.
 - Not tested yet: `upload` and `pull` (need the Roboflow key), GPU training, `export` to CoreML, `check` on a real capture from the trained model.

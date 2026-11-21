@@ -27,6 +27,7 @@ Example run, start to finish:
   python pipeline.py export --format coreml
   python pipeline.py live --source 0
   python pipeline.py check --schedule live/schedule_example.json     # latest capture
+  python pipeline.py check --schedule live/schedule_example.json --zone middle --face A
 
 The API key is read from the environment only. Never write it into a file in this repo.
 """
@@ -207,7 +208,10 @@ def st_check(a):
         schedule = load_schedule(a.schedule)
     except (OSError, ValueError) as e:
         raise SystemExit(f"Schedule {a.schedule}: {e}") from e
-    result = run_checks(json.loads(cap_path.read_text()), schedule)
+    try:
+        result = run_checks(json.loads(cap_path.read_text()), schedule, zone=a.zone, face=a.face)
+    except ValueError as e:
+        raise SystemExit(str(e)) from e
     result["capture"] = cap_path.name
     out = cap_path.with_suffix(".check.json")
     out.write_text(json.dumps(result, indent=2))
@@ -266,6 +270,9 @@ def main():
     s = sub.add_parser("check", help="captured frame vs bending schedule -> faults")
     s.add_argument("capture", nargs="?", default=None, help="capture JSON (default: the latest in live/captures)")
     s.add_argument("--schedule", required=True, help="bar bending schedule JSON (see live/schedule_example.json)")
+    s.add_argument("--zone", choices=["end", "middle"], default=None,
+                   help="column zone in the photo: end (near a floor, the default) or middle")
+    s.add_argument("--face", default=None, help="which face of the column, e.g. A or north")
     s.set_defaults(fn=st_check)
 
     a = p.parse_args()
