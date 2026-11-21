@@ -10,6 +10,7 @@ Concrete Evidence_AI _“Catch it before you cast it.”
 - `docs/rebar_process_timeline.html`: the 20 steps of the rebar process, the faults at each, and the app feature that catches them
 - `concrete_evidence/`: the shared code the scripts use (markers and scale, frame picking, label conversion, face blur, live-view records)
 - `tests/`: tests for that code; they run on every pull request (`.github/workflows/ci.yml`)
+- **[team/](team/README.md)**: one folder each (Akshat, Diego, Akanksha) for your plan, notes and results; how to upload
 
 ## Working on the code
 
