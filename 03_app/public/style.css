@@ -1,0 +1,73 @@
+/* Plain on purpose: the UI layer restyles this. Colours as tokens, light and dark. */
+:root {
+  --bg: #f6f7f5; --panel: #ffffff; --fg: #1d2420; --muted: #5d6862; --line: #dde2de;
+  --accent: #2f5d50; --ok: #2e7d4f; --warn: #a76a00; --bad: #c0392b;
+  --radius: 8px; --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #141816; --panel: #1d2320; --fg: #e8ece9; --muted: #9aa59f; --line: #2f3833;
+    --accent: #7fb8a6; --ok: #5cbf86; --warn: #e0a640; --bad: #ef7466; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 var(--font); }
+h1 { font-size: 1.5rem; margin: 0; }
+h2 { font-size: 1.15rem; margin: 0 0 .75rem; }
+h3 { font-size: 1rem; margin: 1.25rem 0 .5rem; }
+.muted { color: var(--muted); }
+label { display: block; font-weight: 600; margin: .75rem 0 .25rem; }
+input[type=text], input[type=password], select, textarea {
+  width: 100%; font: inherit; padding: .5rem .6rem; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--panel); color: var(--fg); }
+textarea { font-family: ui-monospace, Consolas, monospace; font-size: .85rem; }
+button { font: inherit; font-weight: 600; padding: .6rem 1rem; border-radius: var(--radius); border: 1px solid var(--accent);
+  background: var(--accent); color: var(--panel); cursor: pointer; margin-top: 1rem; }
+button.quiet { background: transparent; color: var(--accent); }
+button:disabled { opacity: .5; cursor: wait; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.top { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start;
+  padding: 1.25rem max(16px, env(safe-area-inset-left)) 0; max-width: 1200px; margin: 0 auto; }
+.top p { max-width: 60ch; margin: .25rem 0 0; }
+.top button { margin: 0; }
+.layout { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 1rem; align-items: start;
+  padding: 1rem max(16px, env(safe-area-inset-left)) 2rem; max-width: 1200px; margin: 0 auto; }
+#history { grid-column: 1; }
+#result { grid-column: 2; grid-row: 1 / span 2; }
+@media (max-width: 800px) { .layout { grid-template-columns: 1fr; } #history, #result { grid-column: auto; grid-row: auto; } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 1rem; min-width: 0; }
+.row { display: grid; grid-template-columns: 2fr 1fr; gap: .75rem; }
+details { margin-top: .75rem; }
+summary { cursor: pointer; color: var(--accent); }
+.preview, .photo { display: block; max-width: 100%; border-radius: var(--radius); margin-top: .5rem; }
+.preview { max-height: 220px; }
+.status { margin: .75rem 0 0; }
+.status.error { color: var(--bad); }
+.status.ok { color: var(--ok); }
+.status.busy { color: var(--warn); }
+.result-head { display: flex; gap: .75rem; align-items: baseline; flex-wrap: wrap; }
+.badge { font-size: .8rem; font-weight: 600; padding: .1rem .5rem; border-radius: 999px; border: 1px solid var(--line); }
+.badge[data-state=pending] { color: var(--warn); border-color: var(--warn); }
+.badge[data-state=reviewed] { color: var(--accent); border-color: var(--accent); }
+.badge[data-state=signed_off] { color: var(--ok); border-color: var(--ok); }
+.fixes { padding-left: 1.2rem; }
+.fixes li { margin: .3rem 0; }
+.faults { padding-left: 1.2rem; }
+.faults li { margin: .75rem 0; }
+.faults p { margin: .2rem 0; }
+.choice { display: flex; flex-wrap: wrap; gap: .25rem 1rem; align-items: center; }
+.choice label { display: inline; font-weight: 400; margin: 0 0 0 .25rem; }
+.note { margin-top: .4rem; }
+.actions { display: flex; gap: .75rem; flex-wrap: wrap; }
+.all-checks { padding-left: 1.2rem; font-size: .9rem; }
+.all-checks li[data-state=fail] { color: var(--bad); }
+.all-checks li[data-state=pass] { color: var(--ok); }
+.history { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.history-item { width: 100%; margin: 0; text-align: left; display: grid; gap: .1rem; background: transparent;
+  color: var(--fg); border: 1px solid var(--line); font-weight: 400; }
+.history-item .badge { justify-self: start; }
+
+.login { display: grid; place-items: center; min-height: 100vh; padding: 16px; }
+.login-box { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem;
+  width: 100%; max-width: 360px; }
+.error { color: var(--bad); }

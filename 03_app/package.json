@@ -1,0 +1,14 @@
+{
+  "name": "concrete-evidence-app",
+  "private": true,
+  "description": "Concrete Evidence: upload a photo of a column cage, get the rebar check, confirm or reject each fault",
+  "scripts": {
+    "db:local": "wrangler d1 execute concrete-evidence-db --local --file=schema.sql",
+    "db:remote": "wrangler d1 execute concrete-evidence-db --remote --file=schema.sql",
+    "dev": "wrangler pages dev --port 8788",
+    "deploy": "wrangler pages deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.156.1"
+  }
+}
