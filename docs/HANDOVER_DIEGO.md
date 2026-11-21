@@ -8,7 +8,9 @@ Train a **supervised segmentation model** that outlines every piece of rebar in 
 
 Supervised means the model learns from examples we labelled by hand. Two stages:
 
-1. **Baseline on our own frames**, from the standard pretrained YOLOv8 weights. No open dataset outlines single bars in a cage: ConRebSeg (CC BY 4.0) outlines *patches* of exposed rebar in repair work, SORD is synthetic. Column Tie Detection and SteelBindings have boxes only.
+**No site access (21 Nov):** we can't film real cages, so the labelled set comes from open data online, open-licence photos and a fab-lab mock-up. The plan and every source are in `datasets/CATALOGUE.md`, "The plan without site access".
+
+1. **Baseline on our own labelled set**, from the standard pretrained YOLOv8 weights. No open dataset outlines single bars in a cage: ConRebSeg (CC BY 4.0) outlines *patches* of exposed rebar in repair work, SORD is synthetic. Column Tie Detection and SteelBindings have boxes only.
 2. **Optional warm-up**: first train on ConRebSeg (class `exposed_rebar`), then on our frames, same split and seed. Keep it only if it beats the baseline on the test frames. This stage makes bar-by-bar checking possible, and it gives the numbers for the slides.
 
 ## Status on 20 Nov 2026 (Akshat)
@@ -29,10 +31,10 @@ The board is the source of truth for dates; this table matches it on 20 Nov.
 
 | # | Step | Command / where | Due |
 |---|---|---|---|
-| 1 | Film 2–3 column-cage videos, 4 markers in view, slow, from above | phone | Sat 21 Nov |
-| 2 | Extract frames (faces blurred automatically) | `python pipeline.py frames videos/*.mp4` | Sat 21 Nov |
-| 3 | Upload to Roboflow | `python pipeline.py upload` (set `ROBOFLOW_API_KEY` in the terminal first, never in a file) | Sun 22 Nov |
-| 4 | Label 150 frames as **polygons** | Roboflow, project `concrete-evidence-column-cages`. Smart Polygon helps | Sun 22 Nov |
+| 1 | Check the Roboflow Universe sets with outlines (logged in): licence CC BY 4.0, polygons not boxes. Fork the good ones into `concrete-evidence-column-cages`, map classes to `bar · tie · hook_90 · hook_135` | `datasets/CATALOGUE.md`, source 1 | Sat 21 Nov |
+| 2 | Box-only sets (Column Tie, SteelBindings, stirrups): outlines from the boxes with Smart Polygon, then fix by hand | Roboflow, source 2 | Sun 22 Nov |
+| 3 | Open-licence cage photos from Wikimedia Commons / Flickr (CC0, CC BY, CC BY-SA only), with a CSV of URL, author, licence. Upload with `python pipeline.py upload --folder <dir>` (set `ROBOFLOW_API_KEY` in the terminal first, never in a file) | source 3 | Sun 22 Nov |
+| 4 | Fab-lab mock-up photos: each face, 4 markers in view, correct and with planted faults. Video works too: `python pipeline.py frames videos/*.mp4` (faces blurred). Label everything as **polygons**, 300+ images in total | source 4, Roboflow | Sun 22 – Mon 23 Nov |
 | 5 | Optional: ConRebSeg warm-up, runs while you label | Colab, T4 GPU: `training/train_rebar_yolov8seg.ipynb`, Part B. Downloads ConRebSeg (22.6 GB) to Colab and checks it. Skip it if time is short | Sun 22 Nov |
 | 6 | Generate a version: 70/20/10 split, blur + brightness augmentation | Roboflow | Mon 23 Nov |
 | 7 | Baseline on our labels (Part A), plus the warm-up run if you did step 5; same split and seed, compare | same notebook, or `python pipeline.py pull --version 1` then `train --stage finetune` on a GPU | Mon 23 Nov |
@@ -48,7 +50,8 @@ Akshat's model server (Mon 23) starts with the test model and switches to your m
 - Every visible piece gets its own polygon. Two bars that cross are two polygons.
 - A hidden part of a bar isn't outlined. Don't guess where it runs.
 - `tie` is the wire at a crossing. `hook_90` / `hook_135` is the bent end of a stirrup.
-- Keep about 15 frames from a cage you **didn't** train on, as the test set. That's the honest score for the slides.
+- Keep the photos of one mock-up cage (about 15) out of training, as the test set. That's the honest score for the slides.
+- Only openly licensed data. No Google Images, no YouTube frames. Credit every CC BY / CC BY-SA source.
 
 ## Things that will bite
 
