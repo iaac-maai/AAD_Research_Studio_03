@@ -21,6 +21,7 @@ Paste this file into your Claude session as the brief. Repo: `iaac-maai/AAD_Rese
 | 7 | Fab-lab session: print the markers (`python pipeline.py markers`, check one measures 100 mm) by Sun 13:00; build the mock-up, photograph every face, correct and with the planted faults | your task 2; lab materials | **Sun 14:00–17:00** | Diego (labels the photos by Sun 19:00) | photos on the Drive |
 | 8 | Depth test on the mock-up photos: `python pipeline.py depth <photos> --out <dir> --preview --slices 2`. Keeps the cage? Cuts off bars? | your task 7 | Sun 20:00 | the team (depth on or off) | `team/akanksha/DEPTH_TEST.md` (5 before/after pictures under 1 MB + 3 lines) |
 | 9 | Pitch outline for Thursday: the problem (90° hooks opening in earthquakes), what the app does (your 9 steps), what version 1 covers, what it does not do | your task 3 | Sun 23:00 | the team (Thursday) | `team/akanksha/PITCH.md` |
+| 10 | Review the user-journey design (https://claude.ai/artifact/9Sx4wLkfzPwzhuerVaCcCE): does the flow make sense, should a site supervisor role be added? Does the worker screen match your result page? Leave comments on it | Akshat's design | Sun 23:00 | Akshat (UI layer by Tue) | comments on the design |
 
 ## Hand-offs
 

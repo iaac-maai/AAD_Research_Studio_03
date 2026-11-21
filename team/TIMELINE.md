@@ -12,6 +12,9 @@ Akanksha: Eurocode 8 check **Sat 18:00** → mock-up design **Sat 21:00** → fa
 **App chain (the product):**
 Akshat: ONNX server **Sat 20:00** → Cloudflare app locally Sat 24:00 → Render live **Sun 11:00** → Cloudflare live **Sun 13:00** → Akanksha's result page (**Sun 12:00**) wired in **Sun 21:00**
 
+**UI chain (the look):**
+Akshat: user-journey design (site worker, engineer, architect, client) **Sat** → Diego + Akanksha: review it, flow + site supervisor role **Sun 23:00** → Akshat: app restyled, site worker + engineer screens **Tue 18:00** → architect + client screens only if the core works **Wed 18:00** (else shown as design)
+
 ## By when
 
 | When | Who | What | Who waits on it |
@@ -37,5 +40,8 @@ Akshat: ONNX server **Sat 20:00** → Cloudflare app locally Sat 24:00 → Rende
 | **Sun 21:00** | **Diego** | **training started** (overnight) | `best.pt` |
 | **Sun 21:00** | **Akshat** | **result page wired in: app end to end** | the team |
 | Sun 23:00 | Akanksha / Akshat | pitch outline / board + Monday plan | the team |
+| **Sun 23:00** | **Diego, Akanksha** | **user-journey design reviewed: flow, site supervisor?** | **Akshat's UI layer** |
 | **Mon 10:00** | **Diego** | **`best.pt` + `RESULTS.md`** | **Akshat** |
 | Mon 12:00 | Akshat | real model live in the app | Thursday demo |
+| **Tue 18:00** | **Akshat** | **UI layer: app restyled, site worker + engineer screens** | freeze Wed |
+| Wed 18:00 | Akshat | architect + client screens, only if the core works | Thursday demo |

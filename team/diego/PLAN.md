@@ -24,6 +24,7 @@ Paste this file into your Claude session as the brief. Repo: `iaac-maai/AAD_Rese
 | 10 | Train the baseline in Colab: `training/train_rebar_yolov8seg.ipynb`, Part A, T4 GPU; `best.pt` to Drive | your task 9 | **started by Sun 21:00** (runs overnight) | Akshat (Mon) | `best.pt` on the Drive |
 | 11 | Optional: same run on depth-filtered photos (`python pipeline.py depth data/ours --out data/ours_depth`), same seed | your task 9 | Sun 22:00 | the team (is depth worth it?) | second run |
 | 12 | Write the scores: mask mAP50, precision, recall per class, above all `hook_90` vs `hook_135` | your task 10 | **Mon 10:00** | Akshat (swaps the model in by Mon 12:00) | `team/diego/RESULTS.md` + team board |
+| 13 | Review the user-journey design (https://claude.ai/artifact/9Sx4wLkfzPwzhuerVaCcCE): does the flow make sense, should a site supervisor role be added? Leave comments on it | Akshat's design | Sun 23:00 | Akshat (UI layer by Tue) | comments on the design |
 
 ## Hand-offs
 
