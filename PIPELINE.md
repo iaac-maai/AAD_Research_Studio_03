@@ -5,7 +5,7 @@ One script, `pipeline.py`, runs every stage. Each stage reads what the stage bef
 ```
  FILM         LABEL                TRAIN                              SCORE      USE        CHECK
  ────         ─────                ─────                              ─────      ───        ─────
- markers ──► frames ──► upload ──► pretrain (ConRebSeg, real sites) ┐
+ markers ──► frames ──► upload ──► train on our frames (baseline)  ┐
                         (Roboflow:                                  ├─► eval ──► export ──► live ──C──► check ──► a person
                          label) ──► pull ──► train finetune ────────┘  (scores)  (phone)  (capture)  (vs bending   confirms
                                                                                                       schedule)    or rejects
@@ -39,10 +39,10 @@ $env:ROBOFLOW_API_KEY = "..."
 | 3 | **Frames** | `python pipeline.py frames videos/*.mp4` | `data/frames/`: one frame every 0.5 s, blurry and duplicate frames dropped. |
 | 4 | **Upload** | `python pipeline.py upload` | Frames sent to the Roboflow project `concrete-evidence-column-cages`. |
 | 5 | **Label** | (Roboflow) | Outline every piece as a polygon: `bar · tie · hook_90 · hook_135`. Smart Polygon speeds it up. Aim for 150–300 frames. Then **Generate** a version with blur/brightness augmentation. |
-| 6 | **ConRebSeg** | `python pipeline.py conrebseg` | Real construction-site photos (DTU, CC BY 4.0), self-collected part only (no YouTube), `ExposedBars` as `bar`, converted to YOLO-seg in `data/conrebseg_yolo/` with its own train / val / test split. Download it into `data/conrebseg/` first (22.6 GB: `ConRebSeg.zip` + `samples.json`, see the notebook). `--limit 1000` for a quick run. SORD (`python pipeline.py sord`, synthetic, CC BY-NC) stays as an optional quick test. |
-| 7 | **Pretrain** | `python pipeline.py train --stage pretrain` | The baseline, on ConRebSeg (`--data sord` for SORD): `runs/pretrain/weights/best.pt`. Needs a GPU: use the Colab notebook `training/train_rebar_yolov8seg.ipynb`, Part A. |
+| 6 | **ConRebSeg** (optional) | `python pipeline.py conrebseg` | Concrete-repair site photos (DTU, CC BY 4.0), self-collected part only (no YouTube). Its labels outline **patches** of exposed rebar, not single bars, so they become `exposed_rebar`, never `bar`. Use it only as a warm-up for how real rebar looks in dirt and shadow; converted to YOLO-seg in `data/conrebseg_yolo/` with its own train / val / test split. Download it into `data/conrebseg/` first (22.6 GB: `ConRebSeg.zip` + `samples.json`, see the notebook). `--limit 1000` for a quick run. SORD (`python pipeline.py sord`, synthetic, CC BY-NC) stays as an optional quick test. |
+| 7 | **Warm-up** (optional) | `python pipeline.py train --stage pretrain` | On ConRebSeg (`--data sord` for SORD): `runs/pretrain/weights/best.pt`. Only worth it if it beats the baseline on the same test frames. Needs a GPU: use the Colab notebook `training/train_rebar_yolov8seg.ipynb`, Part A. |
 | 8 | **Pull** | `python pipeline.py pull --version 1` | Your labelled version in `data/ours/`. |
-| 9 | **Fine-tune** | `python pipeline.py train --stage finetune` | `runs/finetune/weights/best.pt`, starting from the baseline weights, same seed. GPU / Colab (Part B of the notebook). |
+| 9 | **Baseline** | `python pipeline.py train --stage finetune` | `runs/finetune/weights/best.pt`, from the standard pretrained YOLOv8 weights, on our own frames. Add `--model runs/pretrain/weights/best.pt` to start from the warm-up instead, same seed, and compare. GPU / Colab (Part B of the notebook). |
 | 10 | **Evaluate** | `python pipeline.py eval` | `runs/eval.json`: mask precision, recall, mAP per class. These are the numbers for the `[__]` boxes on the slides. |
 | 11 | **Export** | `python pipeline.py export --format coreml` | Model for the phone (`coreml` iPhone/iPad, `tflite` Android, `onnx` server). |
 | 12 | **Live** | `python pipeline.py live --source 0` | Webcam (or `--source video.mp4`, or a phone stream URL). Masks, a tracking ID per bar, markers, mm scale. Says **READY TO CHECK** when all 4 markers are in view and the camera is still; press **C** to save that frame and its detections in mm to `live/captures/` (faces blurred). |
@@ -50,9 +50,10 @@ $env:ROBOFLOW_API_KEY = "..."
 
 Weights and data never go into git (`runs/`, `data/`, `*.pt` are ignored). Keep `best.pt` on the team Google Drive.
 
-## Why two training stages
+## Why our own frames are the baseline
 
-- **ConRebSeg** teaches what exposed rebar looks like on real sites: about 26,000 outlined bars in 12,000 photos, with dust, shadow and clutter. One class, `bar`.
+- **No open dataset outlines single bars in a cage before the pour.** ConRebSeg (12,000 real photos) outlines patches of exposed rebar in repair work; SORD outlines crossings and gaps in rendered mats. Neither has our classes.
+- So the baseline trains on our own labelled frames from the standard pretrained weights. ConRebSeg or SORD can be tried as a warm-up, and kept only if it scores better on the same test frames.
 - **Our labels** teach the classes we actually check (`bar`, `tie`, hooks) on real camera frames: blur, glare, our phone, our cages. Bar-by-bar checking needs this stage.
 
 ## Where the live view hands over to the checker
