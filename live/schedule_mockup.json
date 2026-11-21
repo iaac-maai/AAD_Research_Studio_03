@@ -1,0 +1,19 @@
+{
+  "element": "Mock-up column",
+  "column_mm": [400, 400],
+  "cover_mm": 30,
+  "clear_height_mm": 1200,
+  "ductility": "DCM",
+  "bar_diameter_mm": 16,
+  "bar_count": 4,
+  "bar_spacing_mm": 400,
+  "tie_diameter_mm": 8,
+  "tie_spacing_mm": {
+    "end": 100,
+    "middle": 200
+  },
+  "spacing_tol_mm": 10,
+  "diameter_tol_mm": 4,
+  "hook_angle": 135,
+  "hook_tail_factor": 10
+}

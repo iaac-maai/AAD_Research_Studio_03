@@ -20,20 +20,23 @@ def _fix(item: dict) -> str | None:
     c, m, e = item["check"], item.get("measured"), item.get("expected")
     if c == "bar_count":
         if m < e:
-            return f"Add {e - m} bar(s): {m} seen, {e} scheduled. The spacing faults show where."
-        return f"Check the {m - e} extra bar(s): {m} seen, {e} scheduled."
+            return (f"Add {e - m} longitudinal bar(s). The photo shows {m}; "
+                    f"the schedule requires {e}. Stop and position the missing bar before tying.")
+        return f"Remove or recheck {m - e} extra longitudinal bar(s). The photo shows {m}; the schedule requires {e}."
     if c == "spacing":
         if m > 1.5 * e:
             return f"Add the missing bar between bars {_ids(item)} (gap {m:g} mm, should be {e:g} mm)."
         return f"Move bars {_ids(item)} to {e:g} mm apart (now {m:g} mm)."
     if c == "bar_size":
-        return f"Bar {_ids(item)} looks {m:g} mm: check it, and replace it with a {e:g} mm bar if it is wrong."
+        return (f"Check bar {_ids(item)}: it measures about {m:g} mm wide, "
+                f"while the schedule calls for {e:g} mm. Replace it only after confirming "
+                "the diameter and cut label.")
     if c == "tie_spacing":
         n = max(1, math.ceil(m / e) - 1)  # ties to add so no gap is over the limit
         where = f"between {item['from_mm']:g} and {item['to_mm']:g} mm from the first tie in view"
         return f"Add {n} tie(s) {where} (gap {m:g} mm, at most {e:g} mm in the {item.get('zone', '')} zone)."
     if c == "hook_angle":
-        return f"Rebend hook {_ids(item)} to {e} degrees (now {m})."
+        return f"Rebend hook {_ids(item)} to {e} degrees; it is currently {m} degrees."
     if c == "hook_tail":
         return f"Hook {_ids(item)} tail is about {m:g} mm, needs {e:g} mm: replace the tie."
     if c == "schedule_vs_code":
