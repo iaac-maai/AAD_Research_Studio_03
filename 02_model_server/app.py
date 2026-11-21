@@ -6,11 +6,15 @@ for programs: `/predict` takes a base64 photo + the bar bending schedule (JSON)
 annotated photo. The Cloudflare app calls `/predict`. Runs locally
 (`python 02_model_server/app.py`) and on Render (render.yaml at the repo root).
 
+It runs the model on ONNX Runtime, without PyTorch, so it fits Render's free
+512 MB. A `.pt` file still works locally if Ultralytics is installed.
+
 Settings, from the environment (Render: Environment tab):
-  MODEL_PATH    weights to load (default: models/best.pt if present, else yolov8n-seg.pt)
-  MODEL_REPO    a Hugging Face repo to download best.pt from, e.g. iaac-maai/concrete-evidence-rebar
+  MODEL_PATH    weights to load: .onnx (ONNX Runtime) or .pt (Ultralytics); default models/best.onnx
+  MODEL_REPO    a Hugging Face repo to download the weights from, e.g. iaac-maai/concrete-evidence-rebar
+  MODEL_FILE    the file in that repo (default best.onnx)
   CLASS_RENAME  model class=our class, comma separated, e.g. skewer=bar for the skewer test model
-  DEPTH_FILTER  1 to run Depth Anything before YOLO (needs about 400 MB more memory)
+  DEPTH_FILTER  1 to run Depth Anything (ONNX, 99 MB) before YOLO
 """
 
 import base64
@@ -34,16 +38,19 @@ EXAMPLE_SCHEDULE = (ROOT / "live" / "schedule_example.json").read_text()
 
 
 def load_model():
-    from ultralytics import YOLO
-
     path = os.environ.get("MODEL_PATH")
     repo = os.environ.get("MODEL_REPO")
     if not path and repo:
         from huggingface_hub import hf_hub_download
-        path = hf_hub_download(repo, "best.pt")
+        path = hf_hub_download(repo, os.environ.get("MODEL_FILE", "best.onnx"))
     if not path:
-        local = ROOT / "models" / "best.pt"
-        path = str(local) if local.exists() else "yolov8n-seg.pt"
+        path = str(ROOT / "models" / "best.onnx")
+    if not Path(path).exists():
+        raise SystemExit(f"no model at {path}: set MODEL_PATH or MODEL_REPO")
+    if path.endswith(".onnx"):
+        from concrete_evidence.onnx_seg import OnnxSeg
+        return OnnxSeg(path), Path(path).name
+    from ultralytics import YOLO  # .pt: only where PyTorch is installed
     return YOLO(path), Path(path).name
 
 
@@ -56,8 +63,8 @@ MODEL, MODEL_NAME = load_model()
 RENAME = parse_rename(os.environ.get("CLASS_RENAME", ""))
 DEPTH = None
 if os.environ.get("DEPTH_FILTER") == "1":
-    from concrete_evidence.depth import DepthAnything
-    DEPTH = DepthAnything()
+    from concrete_evidence.depth import DepthAnythingOnnx
+    DEPTH = DepthAnythingOnnx()
 
 
 def decode_image(image_b64: str) -> np.ndarray:

@@ -6,3 +6,5 @@ pillow==13.0.0
 PyYAML==6.0.3
 pytest==9.2.0
 ruff==0.17.6
+onnx==1.23.2  # the ONNX runner tests build a tiny model
+onnxruntime==1.32.0

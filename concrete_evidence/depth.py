@@ -51,6 +51,49 @@ class DepthAnything:
         return normalise(d.cpu().numpy())
 
 
+ONNX_ID = "onnx-community/depth-anything-v2-small"
+ONNX_REVISION = "4472b7362082ad9968fee890ca0f1e5aca36b93d"  # Apache-2.0, checked 21 Nov 2026
+ONNX_FILE = "onnx/model.onnx"  # 99 MB, float32
+MEAN, STD = np.float32([0.485, 0.456, 0.406]), np.float32([0.229, 0.224, 0.225])
+
+
+def dpt_size(h: int, w: int, size: int = 518, multiple: int = 14) -> tuple[int, int]:
+    """The model input size the Hugging Face processor picks: keep the aspect ratio, short side about
+    `size`, both sides a multiple of 14."""
+    sh, sw = size / h, size / w
+    s = sw if abs(1 - sw) < abs(1 - sh) else sh
+    return (max(multiple, int(round(h * s / multiple)) * multiple),
+            max(multiple, int(round(w * s / multiple)) * multiple))
+
+
+class DepthAnythingOnnx:
+    """The same Depth Anything V2 Small, on ONNX Runtime: no PyTorch, for the 512 MB server.
+
+    Call it on a BGR photo to get nearness, 0 (far) to 1 (near), like DepthAnything.
+    """
+
+    def __init__(self, path: str | None = None, threads: int | None = None, file: str = ONNX_FILE):
+        import onnxruntime as ort
+
+        if path is None:
+            from huggingface_hub import hf_hub_download
+            path = hf_hub_download(ONNX_ID, file, revision=ONNX_REVISION)
+        opts = ort.SessionOptions()
+        opts.enable_cpu_mem_arena = False  # hand memory back after each photo: Render has 512 MB
+        if threads:
+            opts.intra_op_num_threads = threads
+        self.session = ort.InferenceSession(str(path), opts, providers=["CPUExecutionProvider"])
+        self.input = self.session.get_inputs()[0].name
+
+    def __call__(self, bgr: np.ndarray) -> np.ndarray:
+        h, w = bgr.shape[:2]
+        nh, nw = dpt_size(h, w)
+        rgb = cv2.cvtColor(cv2.resize(bgr, (nw, nh), interpolation=cv2.INTER_CUBIC), cv2.COLOR_BGR2RGB)
+        x = ((rgb.astype(np.float32) / 255.0 - MEAN) / STD).transpose(2, 0, 1)[None]
+        out = self.session.run(None, {self.input: np.ascontiguousarray(x)})[0][0]
+        return normalise(cv2.resize(out.astype(np.float32), (w, h), interpolation=cv2.INTER_CUBIC))
+
+
 def normalise(depth: np.ndarray) -> np.ndarray:
     """Nearness to 0..1, ignoring the 2% most extreme pixels at each end."""
     d = np.asarray(depth, dtype=np.float32)

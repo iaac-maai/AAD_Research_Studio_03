@@ -201,8 +201,20 @@ def st_eval(a):
 def st_export(a):
     from ultralytics import YOLO
     model = a.model or best_model()
-    path = YOLO(str(model)).export(format=a.format, imgsz=a.imgsz)
+    extra = {"simplify": True, "opset": 17, "dynamic": False} if a.format == "onnx" else {}
+    path = YOLO(str(model)).export(format=a.format, imgsz=a.imgsz, **extra)
     print(f"Exported {model} -> {path}")
+    if a.format == "onnx" and a.check:  # same photo through both: do they agree?
+        import cv2
+
+        from concrete_evidence.onnx_seg import OnnxSeg, compare
+        img = cv2.imread(a.check)
+        if img is None:
+            raise SystemExit(f"Could not read the photo {a.check}")
+        res = compare(YOLO(str(model)), OnnxSeg(path), img, imgsz=a.imgsz)
+        print(json.dumps(res, indent=2))
+        if not res["same_count"]:
+            raise SystemExit("ONNX and PyTorch found a different number of pieces: check the export")
 
 
 def st_live(a):
@@ -250,8 +262,13 @@ def st_analyse(a):
         schedule = load_schedule(a.schedule)
     except (OSError, ValueError) as e:
         raise SystemExit(f"Schedule {a.schedule}: {e}") from e
-    from ultralytics import YOLO
-    model = YOLO(a.model or best_model())
+    weights = str(a.model or best_model())
+    if weights.endswith(".onnx"):  # ONNX Runtime, as on the server
+        from concrete_evidence.onnx_seg import OnnxSeg
+        model = OnnxSeg(weights)
+    else:
+        from ultralytics import YOLO
+        model = YOLO(weights)
     depth = None
     if a.depth_filter:
         from concrete_evidence.depth import DepthAnything
@@ -319,6 +336,7 @@ def main():
     s = sub.add_parser("export", help="best.pt -> phone / server format")
     s.add_argument("--format", default="coreml", choices=["coreml", "tflite", "onnx"])
     s.add_argument("--model", default=None); s.add_argument("--imgsz", type=int, default=640)
+    s.add_argument("--check", default=None, metavar="PHOTO", help="onnx: compare ONNX with PyTorch on this photo")
     s.set_defaults(fn=st_export)
 
     s = sub.add_parser("live", help="run on webcam / stream / video")

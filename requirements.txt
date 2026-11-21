@@ -11,3 +11,6 @@ ultralytics==8.4.216
 roboflow==1.7.3
 huggingface_hub==2.4.0
 transformers==5.22.2  # Depth Anything V2 Small (pipeline.py depth, live --depth-filter)
+onnx==1.23.2  # export --format onnx
+onnxslim==0.1.99
+onnxruntime==1.32.0  # the server and analyse on .onnx
