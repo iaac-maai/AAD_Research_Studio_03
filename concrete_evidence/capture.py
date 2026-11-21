@@ -44,7 +44,8 @@ def shape(polygon) -> dict | None:
 def record(track_id, cls_name: str, conf: float, xyxy, mm_per_px: float | None, polygon=None) -> dict:
     """One detection as a plain dict: id, class, confidence, centre and size in px (and mm).
 
-    With the mask outline (polygon), also its length, width and direction (see shape()).
+    With the mask outline (polygon), also its length, width and direction (see shape()),
+    and the outline itself in whole pixels, so an app can draw it.
     """
     x1, y1, x2, y2 = (float(v) for v in xyxy)
     d = {"track_id": track_id, "class": cls_name, "conf": round(float(conf), 3),
@@ -53,6 +54,7 @@ def record(track_id, cls_name: str, conf: float, xyxy, mm_per_px: float | None, 
     s = shape(polygon) if polygon is not None else None
     if s:
         d.update(s)
+        d["polygon"] = [[round(float(x)), round(float(y))] for x, y in np.asarray(polygon).reshape(-1, 2)]
     if mm_per_px:
         d["centre_mm"] = [round(v * mm_per_px, 1) for v in d["centre_px"]]
         d["size_mm"] = [round(v * mm_per_px, 1) for v in d["size_px"]]

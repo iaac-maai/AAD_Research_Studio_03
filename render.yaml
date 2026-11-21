@@ -1,0 +1,22 @@
+# Render Blueprint: the model server (02_model_server/app.py). render.com -> New -> Blueprint -> this repo.
+# Python comes from .python-version (3.13). Free plan: 512 MB, sleeps after 15 min, ~1 min to wake.
+services:
+  - type: web
+    name: concrete-evidence-model
+    runtime: python
+    region: frankfurt
+    plan: free
+    buildCommand: pip install -r 02_model_server/requirements.txt && python -m concrete_evidence.privacy --fetch
+    startCommand: python 02_model_server/app.py
+    healthCheckPath: /
+    envVars:
+      - key: MODEL_REPO          # Hugging Face repo with the ONNX model, e.g. iaac-maai/concrete-evidence-rebar
+        sync: false
+      - key: MODEL_FILE          # the file in that repo
+        value: best.onnx
+      - key: CLASS_RENAME        # skewer=bar for the skewer stand-in; empty for Diego's model
+        sync: false
+      - key: DEPTH_FILTER        # 0 on the free plan: with Depth Anything the server peaks at 592 MB
+        value: "0"
+      - key: HF_HOME
+        value: /tmp/hf

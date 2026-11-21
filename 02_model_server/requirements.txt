@@ -1,0 +1,7 @@
+# Model server: ONNX Runtime, no PyTorch, so it fits Render's free 512 MB.
+onnxruntime==1.32.0
+gradio==6.32.0
+huggingface_hub==2.4.0
+numpy==2.5.4
+opencv-python-headless==5.1.0.95
+pillow==13.0.0

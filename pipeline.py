@@ -16,6 +16,7 @@ Stages, in order:
   export     best.pt -> CoreML (iPhone) / TFLite (Android) / ONNX (server)
   live       run the model on a webcam, phone stream or video; press C to capture a frame
   check      a captured frame against the bar bending schedule -> faults for a person to confirm
+  analyse    the whole check on one photo (what the model server runs): photo -> faults + fix list
 
 Example run, start to finish:
   python pipeline.py markers
@@ -30,6 +31,7 @@ Example run, start to finish:
   python pipeline.py live --source 0                 # add --depth-filter if you trained on data/ours_depth
   python pipeline.py check --schedule live/schedule_example.json     # latest capture
   python pipeline.py check --schedule live/schedule_example.json --zone middle --face A
+  python pipeline.py analyse photo.jpg --schedule live/schedule_example.json --face A
 
 The API key is read from the environment only. Never write it into a file in this repo.
 """
@@ -199,8 +201,20 @@ def st_eval(a):
 def st_export(a):
     from ultralytics import YOLO
     model = a.model or best_model()
-    path = YOLO(str(model)).export(format=a.format, imgsz=a.imgsz)
+    extra = {"simplify": True, "opset": 17, "dynamic": False} if a.format == "onnx" else {}
+    path = YOLO(str(model)).export(format=a.format, imgsz=a.imgsz, **extra)
     print(f"Exported {model} -> {path}")
+    if a.format == "onnx" and a.check:  # same photo through both: do they agree?
+        import cv2
+
+        from concrete_evidence.onnx_seg import OnnxSeg, compare
+        img = cv2.imread(a.check)
+        if img is None:
+            raise SystemExit(f"Could not read the photo {a.check}")
+        res = compare(YOLO(str(model)), OnnxSeg(path), img, imgsz=a.imgsz)
+        print(json.dumps(res, indent=2))
+        if not res["same_count"]:
+            raise SystemExit("ONNX and PyTorch found a different number of pieces: check the export")
 
 
 def st_live(a):
@@ -234,6 +248,41 @@ def st_check(a):
     out = cap_path.with_suffix(".check.json")
     out.write_text(json.dumps(result, indent=2))
     print(summary(result), f"\nwrote {out}")
+
+
+def st_analyse(a):
+    import cv2
+
+    from concrete_evidence.check import load_schedule, summary
+    from concrete_evidence.infer import analyse
+    img = cv2.imread(a.photo)
+    if img is None:
+        raise SystemExit(f"Could not read the photo {a.photo}")
+    try:
+        schedule = load_schedule(a.schedule)
+    except (OSError, ValueError) as e:
+        raise SystemExit(f"Schedule {a.schedule}: {e}") from e
+    weights = str(a.model or best_model())
+    if weights.endswith(".onnx"):  # ONNX Runtime, as on the server
+        from concrete_evidence.onnx_seg import OnnxSeg
+        model = OnnxSeg(weights)
+    else:
+        from ultralytics import YOLO
+        model = YOLO(weights)
+    depth = None
+    if a.depth_filter:
+        from concrete_evidence.depth import DepthAnything
+        depth = DepthAnything()
+    try:
+        rename = dict(kv.split("=", 1) for kv in a.rename)
+        out = analyse(img, schedule, model, depth=depth, zone=a.zone, face=a.face, conf=a.conf, imgsz=a.imgsz,
+                      rename=rename)
+    except (FileNotFoundError, ValueError) as e:
+        raise SystemExit(str(e)) from e
+    stem = Path(a.photo).with_suffix("")
+    cv2.imwrite(f"{stem}_checked.jpg", out.pop("annotated"))
+    Path(f"{stem}_checked.json").write_text(json.dumps(out, indent=2))
+    print(summary(out["check"]), f"\nwrote {stem}_checked.jpg and {stem}_checked.json")
 
 
 # --------------------------------------------------------------------- cli ---
@@ -287,6 +336,7 @@ def main():
     s = sub.add_parser("export", help="best.pt -> phone / server format")
     s.add_argument("--format", default="coreml", choices=["coreml", "tflite", "onnx"])
     s.add_argument("--model", default=None); s.add_argument("--imgsz", type=int, default=640)
+    s.add_argument("--check", default=None, metavar="PHOTO", help="onnx: compare ONNX with PyTorch on this photo")
     s.set_defaults(fn=st_export)
 
     s = sub.add_parser("live", help="run on webcam / stream / video")
@@ -302,6 +352,15 @@ def main():
                    help="column zone in the photo: end (near a floor, the default) or middle")
     s.add_argument("--face", default=None, help="which face of the column, e.g. A or north")
     s.set_defaults(fn=st_check)
+
+    s = sub.add_parser("analyse", help="the whole check on one photo -> faults + fix list")
+    s.add_argument("photo"); s.add_argument("--schedule", required=True)
+    s.add_argument("--model", default=None); s.add_argument("--zone", choices=["end", "middle"], default=None)
+    s.add_argument("--face", default=None); s.add_argument("--conf", type=float, default=0.25)
+    s.add_argument("--imgsz", type=int, default=640)
+    s.add_argument("--depth-filter", action="store_true", help="Depth Anything before YOLO")
+    s.add_argument("--rename", nargs="*", default=[], help="model class=our class, e.g. skewer=bar")
+    s.set_defaults(fn=st_analyse)
 
     a = p.parse_args()
     a.fn(a)
