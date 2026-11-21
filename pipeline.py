@@ -46,9 +46,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 PY = sys.executable
 
-# Roboflow project the team labels in (see training/move_images_to_roboflow.ipynb)
-RF_WORKSPACE = "akshat-dayal-students-iaac-net"
-RF_PROJECT = "concrete-evidence-column-cages"
+# Roboflow project the team labels in: Diego's workspace (the forks and labels live there).
+# Override with RF_WORKSPACE / RF_PROJECT in the terminal to use another copy.
+RF_WORKSPACE = os.environ.get("RF_WORKSPACE", "diegos-workspace-puwbt")
+RF_PROJECT = os.environ.get("RF_PROJECT", "concrete-evidence-column-cages-ft8gc")
 
 PATHS = {
     "frames": ROOT / "data" / "frames",
