@@ -28,9 +28,9 @@ Keep a CSV for sources 1–3: file, source URL, author, licence. CC BY and CC BY
 
 | Dataset | What it shows | Labels | Size | Licence | Status |
 |---|---|---|---|---|---|
-| [Column Tie Detection v7](https://universe.roboflow.com/column-tie-detection/custom-workflow-object-detection-yhfbh) | Column cages, ties present or missing | Boxes: `Tie`, `No Tie`, `PartialTie` | 752 images | CC BY 4.0 | Source 2: boxes → outlines with Smart Polygon |
-| [SteelBindings v1](https://universe.roboflow.com/steelbinding-for-rcc/steelbindings) | Beams, columns, stirrups | Boxes: `Beam`, `Column`, `Lateral-Ties`, `Stirrup` | 303 images | CC BY 4.0 | Source 2 |
-| [stirrup-recognition-dataset](https://universe.roboflow.com/jiawens-workspace/stirrup-recognition-dataset) | Stirrups | Boxes: `stirrup` | 301 images | CC BY 4.0 | Source 2. Fork in Roboflow (no API version) |
+| [Column Tie Detection v7](https://universe.roboflow.com/column-tie-detection/custom-workflow-object-detection-yhfbh) | Column cages, ties present or missing | Boxes: `Tie`, `No Tie`, `PartialTie` | 752 images | CC BY 4.0 | ❌ Checked 21 Nov: the `Tie` boxes sit on **tie-wire knots at crossings**, not stirrups. Not our `tie`: skip |
+| [SteelBindings v1](https://universe.roboflow.com/steelbinding-for-rcc/steelbindings) | Beams, columns, stirrups | Boxes: `Beam`, `Column`, `Lateral-Ties`, `Stirrup` | 303 images | CC BY 4.0 | Weak (21 Nov): `Stirrup` / `Lateral-Ties` boxes cover whole zones of stirrups, not one each |
+| [stirrup-recognition-dataset](https://universe.roboflow.com/jiawens-workspace/stirrup-recognition-dataset) | Stirrups | Boxes: `stirrup` | 301 images | CC BY 4.0 | ✅ Source 2 (21 Nov): one box per loose stirrup. Forked to Diego's workspace, version 1; boxes → `tie` outlines with SAM 2.1 in `team/diego/box_to_polygons.ipynb` |
 | [ConRebSeg](https://github.com/DTU-PAS/ConRebSeg) | Real construction sites, exposed rebar | Segmentation: rebar, person, car, truck | 14,805 images, **22 GB** self-collected | Code GPL-3.0, data CC BY 4.0 | Concrete **repair** sites (bridge undersides, shotcrete). Labels are **patches** of exposed rebar, not single bars, and no pre-pour cages, so it isn't training data for `bar`. Converted as `exposed_rebar` by `python pipeline.py conrebseg` (self-collected only: 6,637 train, 3,454 val, 2,090 test images, 26,072 patches), for an optional warm-up. Downloaded to D: on Akshat's laptop; the Colab notebook downloads it itself. Its YouTube part is skipped: no clear licence |
 | [SORD: Synthetic On-site Rebar Data](https://huggingface.co/datasets/bugwei/synthetic_on-site_rebar_data) | 25,287 Revit renders of columns, beams, slabs, walls on site | Instance masks: `intersection`, `spacing` | 120 GB total, ~480 MB per shard | CC BY-NC 4.0 (**non-commercial**) | **Not our main data**: rendered, not real, and it outlines bar *crossings* and the *gaps* between bars, not bars, ties or hooks. Optional quick test only; never in the model we publish. Shards 0–1 in `data/sord` |
 
@@ -40,11 +40,11 @@ These appear on Roboflow Universe under CC BY 4.0 according to search listings, 
 
 | Project | Why it's useful | Checked |
 |---|---|---|
-| [roomsegment/rebar-seg](https://universe.roboflow.com/roomsegment/rebar-seg) | Rebar **segmentation** masks (701 or 1,399 images, depending on version) | not yet |
-| [ntu-ks0ac/rebar-segment-ysgc1](https://universe.roboflow.com/ntu-ks0ac/rebar-segment-ysgc1) | Classes `intersection`, `spacing`: same idea as SORD, but real photos | not yet |
-| [new-workspace-eeam1/yolo-eio1c](https://universe.roboflow.com/new-workspace-eeam1/yolo-eio1c) | Classes `rebar-cross`, `tie-wire`: the only public **tie-wire** labels found | not yet |
-| [capstone-04lit/rebar-intersection-detect](https://universe.roboflow.com/capstone-04lit/rebar-intersection-detect) | Rebar crossings (boxes) | not yet |
-| [sitevision-tnmlg/rebar-3dl2l](https://universe.roboflow.com/sitevision-tnmlg/rebar-3dl2l) | General rebar on site, 701 images | not yet |
+| [roomsegment/rebar-seg](https://universe.roboflow.com/roomsegment/rebar-seg) | Rebar **segmentation** masks (701 or 1,399 images, depending on version) | ✅ 21 Nov: CC BY 4.0, polygons per bar, 701 images, class `rebar`. Mostly slab meshes. All 701 forked, `rebar` → `bar` |
+| [ntu-ks0ac/rebar-segment-ysgc1](https://universe.roboflow.com/ntu-ks0ac/rebar-segment-ysgc1) | Classes `intersection`, `spacing`: same idea as SORD, but real photos | ❌ 21 Nov: CC BY 4.0 but **boxes**, 100 images, none of our classes. Skip |
+| [new-workspace-eeam1/yolo-eio1c](https://universe.roboflow.com/new-workspace-eeam1/yolo-eio1c) | Classes `rebar-cross`, `tie-wire`: the only public **tie-wire** labels found | ❌ 21 Nov: CC BY 4.0 but **boxes**, 73 images. Tie-wire isn't our `tie` (the stirrup). Skip |
+| [capstone-04lit/rebar-intersection-detect](https://universe.roboflow.com/capstone-04lit/rebar-intersection-detect) | Rebar crossings (boxes) | ❌ 21 Nov: CC BY 4.0, boxes, 99 images, class `intersection`. Skip |
+| [sitevision-tnmlg/rebar-3dl2l](https://universe.roboflow.com/sitevision-tnmlg/rebar-3dl2l) | General rebar on site, 701 images | ✅ 21 Nov: CC BY 4.0, polygons per bar, **358** images, classes `rebar`, `rebars`. Column starter bars: closest to our columns. 36 forked so far, `rebar` → `bar` |
 
 ## Not usable (no open licence): reference only
 
