@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Concrete Evidence</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1>Concrete Evidence</h1>
+      <p class="muted">Photograph one column face with the 4 markers in view. The app checks bars, ties and hooks
+        against the bar bending schedule and Eurocode 8. A person confirms every fault before the pour.</p>
+    </div>
+    <form method="post" action="/api/logout"><button class="quiet" type="submit">Sign out</button></form>
+  </header>
+
+  <main class="layout">
+    <section class="panel" id="new-check">
+      <h2>New check</h2>
+      <form id="check-form">
+        <label for="photo">Photo of one column face</label>
+        <input id="photo" name="photo" type="file" accept="image/jpeg,image/png" capture="environment" required>
+        <img id="preview" class="preview" alt="The photo you chose" hidden>
+
+        <div class="row">
+          <div>
+            <label for="zone">Column zone</label>
+            <select id="zone" name="zone">
+              <option value="end">End zone (near a floor or beam)</option>
+              <option value="middle">Middle zone</option>
+            </select>
+          </div>
+          <div>
+            <label for="face">Face</label>
+            <input id="face" name="face" type="text" value="A" maxlength="20">
+          </div>
+        </div>
+
+        <details>
+          <summary>Bar bending schedule (Column C1, 400 × 400, 16 mm bars, 8 mm ties)</summary>
+          <label for="schedule">Schedule as JSON</label>
+          <textarea id="schedule" name="schedule" rows="14" spellcheck="false"></textarea>
+        </details>
+
+        <button id="submit" type="submit">Check this photo</button>
+        <p id="status" class="status" role="status" hidden></p>
+      </form>
+    </section>
+
+    <section class="panel" id="result" hidden>
+      <div class="result-head">
+        <h2 id="result-title">Result</h2>
+        <span id="result-badge" class="badge"></span>
+      </div>
+      <p id="result-meta" class="muted"></p>
+      <img id="result-photo" class="photo" alt="The checked photo: outlines in red are named in a fault, green are fine">
+      <h3>To fix</h3>
+      <ul id="fixes" class="fixes"></ul>
+      <h3>Review each fault</h3>
+      <p class="muted">The model only suggests. Confirm what you see on site, reject what is wrong.</p>
+      <label for="reviewer">Your name</label>
+      <input id="reviewer" type="text" maxlength="80" autocomplete="name">
+      <ol id="faults" class="faults"></ol>
+      <div class="actions">
+        <button id="save-review" type="button">Save decisions</button>
+        <button id="sign-off" type="button" class="quiet">Sign off this face</button>
+      </div>
+      <p id="review-status" class="status" role="status" hidden></p>
+      <details>
+        <summary>All checks</summary>
+        <ul id="all-checks" class="all-checks"></ul>
+      </details>
+    </section>
+
+    <section class="panel" id="history">
+      <h2>Recent checks</h2>
+      <ul id="history-list" class="history"></ul>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
