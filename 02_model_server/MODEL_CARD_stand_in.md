@@ -62,9 +62,9 @@ from huggingface_hub import hf_hub_download
 from concrete_evidence.onnx_seg import OnnxSeg   # from the project repo
 import cv2
 
-model = OnnxSeg(hf_hub_download("iaac-maai/<this-repo>", "best.onnx"))
+model = OnnxSeg(hf_hub_download("iaac-maai/concrete-evidence-stand-in", "best.onnx"))
 result = model.predict(cv2.imread("photo.jpg"), conf=0.25)[0]
 print(len(result.boxes.xyxy), "pieces")
 ```
 
-On Render the model server reads it with `MODEL_REPO=iaac-maai/<this-repo>` and `MODEL_FILE=best.onnx`.
+On Render the model server reads it with `MODEL_REPO=iaac-maai/concrete-evidence-stand-in` and `MODEL_FILE=best.onnx`.
