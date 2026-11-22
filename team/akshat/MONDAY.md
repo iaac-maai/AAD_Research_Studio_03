@@ -22,16 +22,17 @@ Diego hands over `best.pt` (team Drive, `MyDrive/ConcreteEvidence/`) and `team/d
    python pipeline.py export --format onnx --model D:/Akshat/models/best.pt --check <held-out photo>
    ```
    It stops if ONNX and PyTorch find a different number of pieces.
-3. **Class names:** the ONNX metadata must say `bar, tie, hook_90, hook_135`.
+3. **Class names:** the ONNX metadata should say `bar, stirrup, hook_90, hook_135`
+   (Diego renamed `tie` to `stirrup` in #25; the app still calls it `tie`).
    ```bash
    python -c "import onnxruntime as o; print(o.InferenceSession('best.onnx').get_modelmeta().custom_metadata_map['names'])"
    ```
-   Different names → `CLASS_RENAME`, e.g. `Stirrup=tie`.
+   → `CLASS_RENAME=stirrup=tie`. Other names → add them to the mapping, comma-separated.
 4. **Upload** to a new Hugging Face repo `iaac-maai/concrete-evidence-rebar` (public): `best.onnx` + a model card
    (copy `02_model_server/MODEL_CARD_stand_in.md`, replace data, scores and limits with Diego's; licence AGPL-3.0,
    data licences from `datasets/CATALOGUE.md`).
-5. **Point Render at it**: in `render.yaml`, `MODEL_REPO: iaac-maai/concrete-evidence-rebar` and `CLASS_RENAME`
-   empty (or the mapping from step 3). Branch, PR, merge: Render redeploys by itself (about 4 minutes).
+5. **Point Render at it**: in `render.yaml`, `MODEL_REPO: iaac-maai/concrete-evidence-rebar` and `CLASS_RENAME: stirrup=tie`
+   (the mapping from step 3; never empty, or the tie checks find no ties). Branch, PR, merge: Render redeploys by itself (about 4 minutes).
 6. **Check it live**: run `02_model_server/call_api.ipynb` with `CE_PHOTO` = a fab-lab photo, then one check in
    the app on the phone. Note pieces, faults and time in `RESULTS.md`.
 7. Board: task 14 done, feed post.
