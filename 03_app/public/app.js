@@ -108,13 +108,29 @@ async function openCheck(id) {
     (current.signed_off_by ? ` · signed off by ${current.signed_off_by}` : "");
   $("result-photo").src = current.photo_url;
 
-  $("fixes").replaceChildren(...(c.fixes?.length ? c.fixes : ["No faults found. A person still confirms before the pour."])
-    .map((t) => Object.assign(document.createElement("li"), { textContent: t })));
+  // The verdict line, as in the design: NOT READY (faults left), READY (none), SIGNED OFF
+  const verdict = $("verdict");
+  const nFaults = Number(current.faults || 0);
+  verdict.dataset.state = current.review_status === "signed_off" ? "signed_off" : nFaults ? "fail" : "pass";
+  verdict.textContent = current.review_status === "signed_off" ? "Signed off" : nFaults ? "Not ready" : "Ready";
+  $("headline").textContent = current.review_status === "signed_off" ? "Signed off: ready for the pour"
+    : nFaults ? `${nFaults} ${nFaults === 1 ? "thing" : "things"} to fix` : "All checks pass";
+
+  const two = (n) => String(n).padStart(2, "0");
+  $("fixes").replaceChildren(...(c.fixes?.length
+    ? c.fixes.map((t, i) => {
+      const li = document.createElement("li");
+      li.append(Object.assign(document.createElement("span"), { className: "num", textContent: two(i + 1) }),
+        Object.assign(document.createElement("span"), { textContent: t }));
+      return li;
+    })
+    : [Object.assign(document.createElement("li"), { className: "none", textContent: "No faults found. A person still confirms before the pour." })]));
 
   const latest = new Map(current.reviews.map((r) => [r.fault_index, r]));
   const faults = (c.checks || []).map((x, i) => ({ ...x, i })).filter((x) => x.status === "fail");
-  $("faults").replaceChildren(...faults.map((f) => {
+  $("faults").replaceChildren(...faults.map((f, n) => {
     const li = document.createElement("li");
+    li.append(Object.assign(document.createElement("span"), { className: "num", textContent: two(n + 1) }));
     const title = document.createElement("strong"); title.textContent = label(f.check);
     const detail = document.createElement("p"); detail.textContent = f.detail;
     const choice = document.createElement("div"); choice.className = "choice";
@@ -122,7 +138,7 @@ async function openCheck(id) {
       const id = `f${f.i}-${d}`;
       const input = Object.assign(document.createElement("input"), { type: "radio", name: `f${f.i}`, value: d, id });
       input.checked = latest.get(f.i)?.decision === d;
-      const lab = Object.assign(document.createElement("label"), { htmlFor: id, textContent: d === "confirm" ? "Confirm: it's wrong on site" : "Reject: the app is wrong" });
+      const lab = Object.assign(document.createElement("label"), { htmlFor: id, textContent: d === "confirm" ? "Confirm: wrong on site" : "Reject: the app is wrong" });
       choice.append(input, lab);
     }
     const note = Object.assign(document.createElement("input"), { type: "text", placeholder: "Note (optional)", maxLength: 500 });
@@ -140,7 +156,9 @@ async function openCheck(id) {
   $("all-checks").replaceChildren(...(c.checks || []).map((x) => {
     const li = document.createElement("li");
     li.dataset.state = x.status;
-    li.textContent = `${label(x.check)}: ${x.status}. ${x.detail || ""}`;
+    li.append(Object.assign(document.createElement("span"), { textContent: label(x.check) }),
+      Object.assign(document.createElement("span"), { className: "res", textContent: x.status }));
+    if (x.detail) li.append(Object.assign(document.createElement("span"), { className: "detail", textContent: x.detail }));
     return li;
   }));
   say($("review-status"), "");

@@ -3,18 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0e0e0e">
   <title>Concrete Evidence · Sign in</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body class="login">
   <main class="login-box">
-    <h1>Concrete Evidence</h1>
-    <p class="muted">Rebar check before the pour.</p>
+    <div class="eyebrow"><span>Concrete Evidence</span><span>Team only</span></div>
+    <h1>Rebar check before the pour</h1>
     <form method="post" action="/api/login">
       <label for="password">Team password</label>
       <input id="password" name="password" type="password" autocomplete="current-password" required autofocus>
-      <p id="wrong" class="error" hidden>That password isn't right. Try again.</p>
-      <button type="submit">Sign in</button>
+      <p id="wrong" class="error" hidden style="margin-top:.5rem">That password isn't right. Try again.</p>
+      <button class="primary" type="submit">Sign in</button>
     </form>
   </main>
   <script>
