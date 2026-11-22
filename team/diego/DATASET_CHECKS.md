@@ -33,3 +33,19 @@ Our Roboflow project: **`concrete-evidence-column-cages`** (instance segmentatio
 - Rebar, by SiteVision, Roboflow Universe.
 - SteelBindings, by steelbinding-for-rcc, Roboflow Universe.
 - stirrup-recognition-dataset, by jiawens Workspace, Roboflow Universe.
+
+## More Universe sets searched (Sun 22 Nov)
+
+Searched Roboflow Universe for "stirrup", "rebar cage", "rebar segmentation", "column reinforcement", "rebar tie", "hook rebar", "rebar inspection" and "steel bar construction". About 40 rebar projects, almost all CC BY 4.0. **None has stirrups or hooks as their own class**, which is what we're short of. Most are boxes for counting bar ends in bundles.
+
+| Project | Licence | Labels | Images | Verdict |
+|---|---|---|---|---|
+| [yowli/rebar-seg-2025](https://universe.roboflow.com/yowli/rebar-seg-2025) | CC BY 4.0 | Thin outlines along each bar | 1,683 | Slab meshes, like rebar-seg. More `bar` only; we already have 15k bar outlines. Optional |
+| [scalingdasedae/rebar](https://universe.roboflow.com/scalingdasedae/rebar-evam4) | CC BY 4.0 | Polygons, class `0` | 662 | Exposed bars on damaged façades, not cages before the pour. Skip |
+| [wang-pok/rebar-binding-inspection-1](https://universe.roboflow.com/wang-pok/rebar-binding-inspection-1) | CC BY 4.0 | Boxes, `Present` | 202 | Tie-wire at crossings. Skip |
+| [debrajjjjm/excessive-reinforcement](https://universe.roboflow.com/debrajjjjm/excessive-reinforcement) | CC BY 4.0 | Boxes, `Excess Reinforcement` | 415 | One box per zone. Skip |
+| [peter-stg2k/column-name_size_mainbar_ss](https://universe.roboflow.com/peter-stg2k/column-name_size_mainbar_ss) | CC BY 4.0 | Boxes | 129 | Structural drawings, not photos. Skip |
+
+GitHub (`datasets/`): nothing new since Sat 13:17; the sets there (SORD, ConRebSeg, Column Tie, SteelBindings, stirrups, ROI-1555) are the ones already checked above. **ROI-1555** stays out until its authors answer: the permission email is drafted (`team/akshat/ROI1555_EMAIL.md`) but not sent yet.
+
+**So the `tie` and hook labels have to come from the stirrup set (SAM notebook), our web photos and the fab-lab mock-up.**
