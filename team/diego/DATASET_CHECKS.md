@@ -48,4 +48,8 @@ Searched Roboflow Universe for "stirrup", "rebar cage", "rebar segmentation", "c
 
 GitHub (`datasets/`): nothing new since Sat 13:17; the sets there (SORD, ConRebSeg, Column Tie, SteelBindings, stirrups, ROI-1555) are the ones already checked above. **ROI-1555** stays out until its authors answer: the permission email is drafted (`team/akshat/ROI1555_EMAIL.md`) but not sent yet.
 
+**Kaggle** ("rebar", "stirrup", "reinforcement steel construction"): 7 results, all tables (bond strength, steel weights, prices) plus one concrete-damage set; nothing with cages or stirrups.
+
+**Zenodo** (API search "rebar", "stirrup", "reinforcement cage", "rebar segmentation"): no image dataset of cages before the pour. One record worth keeping **for the pitch, not for training**: [Multi-Earthquake Field Assessment of Transverse Reinforcement Deficiencies](https://zenodo.org/records/24351554) (CC BY 4.0, Nov 2026): 7 figures of real post-earthquake columns where stirrups and 90° hooks failed, plus tables of the defects (D1–D9) and of Turkish seismic code changes. [IDEA earthquake-damage images](https://zenodo.org/records/15120522) is CC BY-NC-ND: no derivatives, so no training.
+
 **So the `tie` and hook labels have to come from the stirrup set (SAM notebook), our web photos and the fab-lab mock-up.**
