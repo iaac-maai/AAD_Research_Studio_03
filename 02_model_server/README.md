@@ -40,6 +40,11 @@ python pipeline.py export --format onnx --model best.pt --check <a test photo>
 `--check` runs the photo through PyTorch and the ONNX file and stops if they find a different number of pieces.
 Then upload `best.onnx` to Hugging Face (`iaac-maai`) and set `MODEL_REPO`. Nothing else changes.
 
+## Call it
+
+[`call_api.ipynb`](call_api.ipynb) sends one photo to the live server with `gradio_client` and prints the answer
+(outputs saved, no photo). Live: https://concrete-evidence-model.onrender.com, endpoint `/predict`.
+
 ## Render
 
 `render.yaml` at the repo root is the Blueprint: render.com → New → Blueprint → this repo → Frankfurt. Set
