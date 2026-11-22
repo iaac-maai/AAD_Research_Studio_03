@@ -14,7 +14,7 @@ services:
         value: iaac-maai/concrete-evidence-stand-in
       - key: MODEL_FILE          # the file in that repo
         value: best.onnx
-      - key: CLASS_RENAME        # skewer=bar for the skewer stand-in; empty for Diego's model
+      - key: CLASS_RENAME        # skewer=bar for the skewer stand-in; stirrup=tie for Diego's model
         value: skewer=bar
       - key: DEPTH_FILTER        # 0 on the free plan: with Depth Anything the server peaks at 592 MB
         value: "0"
