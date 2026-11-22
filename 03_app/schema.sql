@@ -33,3 +33,11 @@ CREATE TABLE IF NOT EXISTS reviews (
   created_at   TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_reviews_check ON reviews (check_id);
+
+-- The checked photo and full result when R2 is not bound (lib/storage.js). Empty when R2 is used.
+CREATE TABLE IF NOT EXISTS files (
+  key           TEXT PRIMARY KEY,            -- same key as in R2, e.g. checks/<id>/checked.jpg
+  content_type  TEXT NOT NULL,
+  body          BLOB NOT NULL,
+  created_at    TEXT NOT NULL
+);

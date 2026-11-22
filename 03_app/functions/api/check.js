@@ -1,8 +1,10 @@
 // POST /api/check: one photo of one column face is checked.
 // Form fields: photo (a JPEG or PNG file), schedule (the bar bending schedule as JSON text), zone ("end" or
 // "middle"), face (e.g. "A").
-// 1. send it to the model server, 2. store the checked photo (faces blurred) and the full result in R2,
+// 1. send it to the model server, 2. store the checked photo (faces blurred) and the full result (R2, or D1 without R2),
 // 3. store one row in D1, 4. answer the page. The original upload is never stored.
+
+import { putFile } from "../../lib/storage.js";
 
 const MAX_BYTES = 8 * 1024 * 1024;
 const ZONES = ["end", "middle"];
@@ -40,15 +42,15 @@ export async function onRequestPost({ request, env }) {
     return Response.json({ error: `The model server could not check this photo: ${result.error}` }, { status: 400 });
   }
 
-  // 2. Store the checked photo and the full result in R2
+  // 2. Store the checked photo and the full result (lib/storage.js: R2, or D1 without R2)
   const id = crypto.randomUUID();
   const createdAt = new Date().toISOString();
   const photoKey = `checks/${id}/checked.jpg`;
   const resultKey = `checks/${id}/result.json`;
   const annotated = fromBase64(result.annotated_jpg_base64 || "");
   delete result.annotated_jpg_base64;
-  await env.BUCKET.put(photoKey, annotated, { httpMetadata: { contentType: "image/jpeg" } });
-  await env.BUCKET.put(resultKey, JSON.stringify(result), { httpMetadata: { contentType: "application/json" } });
+  await putFile(env, photoKey, annotated, "image/jpeg");
+  await putFile(env, resultKey, new TextEncoder().encode(JSON.stringify(result)), "application/json");
 
   // 3. One row in D1. The "?" placeholders keep the user's text out of the SQL
   const check = result.check || {};

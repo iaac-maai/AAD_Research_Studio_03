@@ -13,12 +13,14 @@ MODEL_API_NAME = "predict"
 [[d1_databases]]
 binding = "DB"
 database_name = "concrete-evidence-db"
-database_id = "paste-the-id-from-wrangler-d1-create"
+database_id = "6ef539c7-c578-4b06-b9c1-ec548951c12e"
 
-# The checked photos (faces blurred) and full results: `npx wrangler r2 bucket create concrete-evidence-photos`
-[[r2_buckets]]
-binding = "BUCKET"
-bucket_name = "concrete-evidence-photos"
+# The checked photos (faces blurred) and full results. Without this binding they go into D1's `files` table
+# (lib/storage.js). R2 is not enabled on the account yet: to switch back, run
+# `npx wrangler r2 bucket create concrete-evidence-photos` and remove the # from the three lines below.
+# [[r2_buckets]]
+# binding = "BUCKET"
+# bucket_name = "concrete-evidence-photos"
 
 # The password is NOT here: it is a secret.
 #   Locally: APP_PASSWORD=... in .dev.vars (gitignored)
