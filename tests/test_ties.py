@@ -87,4 +87,4 @@ def test_hook_fixes_read_plainly():
     cap = cage([150, 250])
     cap["detections"].append(h)
     r = run(cap, COLUMN, face="north")
-    assert "C1, face north: Rebend hook 30 to 135 degrees (now 90)." in r["fixes"]
+    assert "C1, face north: Rebend hook 30 to 135 degrees; it is currently 90 degrees." in r["fixes"]
