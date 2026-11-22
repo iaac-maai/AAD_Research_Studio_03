@@ -71,7 +71,8 @@ def rounded_rect(hx, hz, y, rc, n=4):
     return pts
 
 
-def build_cage(rng):
+def build_cage(rng, mockup=False):
+    """mockup=True: the fab-lab cage of team/akanksha/MOCKUP.md (400 x 400 x 1200, 4 x Ø16, Ø8 ties)."""
     b = rng.uniform(0.25, 0.5)
     h = b * rng.uniform(0.8, 1.4)
     height = rng.uniform(1.2, 2.4)
@@ -80,13 +81,20 @@ def build_cage(rng):
     cover = 0.03
     hx, hz = b / 2 - cover - ds, h / 2 - cover - ds
     nx, nz = int(rng.integers(2, 5)), int(rng.integers(2, 5))
+    fault = None
+    if mockup:
+        b = h = 0.4
+        height, db, ds = 1.2, 0.016, 0.008
+        hx = hz = 0.2 + db / 2  # bar centres on the 400 mm corners
+        nx = nz = 2
+        fault = rng.choice(["none", "missing", "hook90", "shifted"], p=[.4, .2, .2, .2])
     inst = []  # (class, mesh, colour)
     base = np.array([0.30, 0.19, 0.12]) if rng.random() < 0.75 else np.array([0.26, 0.26, 0.27])
 
     def rust():
         return np.clip(base * rng.uniform(0.7, 1.25) + rng.normal(0, 0.02, 3), 0, 1)
 
-    shifted = rng.random() < 0.25
+    shifted = (fault == "shifted") if mockup else rng.random() < 0.25
     bars = []
     for i in range(nx):
         for j in range(nz):
@@ -97,8 +105,8 @@ def build_cage(rng):
             bars.append([x, z])
     if shifted:
         k = int(rng.integers(len(bars)))
-        bars[k][0] += rng.uniform(0.02, 0.05) * rng.choice([-1, 1])
-    top = height + rng.uniform(0.1, 0.4)
+        bars[k][0] += (0.03 if mockup else rng.uniform(0.02, 0.05)) * rng.choice([-1, 1])
+    top = height + (0.05 if mockup else rng.uniform(0.1, 0.4))
     for x, z in bars:
         inst.append(("bar", tube([(x, -0.05, z), (x, top, z)], db / 2, 14), rust()))
     # stirrups: dense near the ends
@@ -109,6 +117,12 @@ def build_cage(rng):
         y += end if (y < 0.45 or y > height - 0.45) else mid
     missing = int(rng.integers(len(ys))) if rng.random() < 0.3 else -1
     p90 = rng.uniform(0.15, 0.55)
+    bad90 = -1
+    if mockup:  # ties at 0-500 every 100 at both ends, every 200 in the middle
+        ys = [0.02, 0.1, 0.2, 0.3, 0.4, 0.5, 0.7, 0.8, 0.9, 1.0, 1.1, 1.18]
+        missing = int(rng.integers(1, 5)) if fault == "missing" else -1
+        bad90 = int(rng.integers(len(ys))) if fault == "hook90" else -1
+        p90 = 0.0
     rc = max(ds * 2.5, db / 2 + ds)
     sx, sz = hx + ds / 2 + db / 2 * 0 + 0.0, hz + ds / 2
     for k, y in enumerate(ys):
@@ -120,8 +134,8 @@ def build_cage(rng):
         corner = np.array([-sx, y, -sz])
         # sharp closing corner at (-sx,-sz): both ends of the bar meet there
         body = [tuple(corner)] + path[: len(path) - n] + [tuple(corner)]
-        tail = max(10 * ds, 0.075)
-        hook90 = rng.random() < p90
+        tail = 0.08 if mockup else max(10 * ds, 0.075)
+        hook90 = (k == bad90) or rng.random() < p90
         o = 1.6 * ds
         if hook90:  # tails bent 90 deg, running along the two sides, just inside the legs
             a0 = corner + np.array([o, 0, 0])
@@ -213,15 +227,21 @@ def look_at(eye, target):
     return M
 
 
-def render_one(rng, renderer):
-    inst, (b, h, height) = build_cage(rng)
+def render_one(rng, renderer, mockup=False):
+    inst, (b, h, height) = build_cage(rng, mockup)
     scene = pyrender.Scene(bg_color=[0, 0, 0, 0], ambient_light=rng.uniform(0.25, 0.5, 3))
     nodes, extra = [], []
     for _cls, mesh, col in inst:
         mat = pyrender.MetallicRoughnessMaterial(baseColorFactor=[*col, 1.0], metallicFactor=rng.uniform(0.3, 0.8),
                                                  roughnessFactor=rng.uniform(0.4, 0.8))
         nodes.append(scene.add(pyrender.Mesh.from_trimesh(mesh, material=mat, smooth=False)))
-    if rng.random() < 0.5:  # slab / footing under the cage
+    if mockup:  # 500 x 500 plywood base board
+        board = trimesh.creation.box(extents=[0.5, 0.02, 0.5])
+        board.apply_translation([0, -0.01, 0])
+        w = rng.uniform(0.75, 0.9)
+        extra.append(scene.add(pyrender.Mesh.from_trimesh(board, material=pyrender.MetallicRoughnessMaterial(
+            baseColorFactor=[w, w * 0.8, w * 0.55, 1.0], roughnessFactor=0.9))))
+    elif rng.random() < 0.5:  # slab / footing under the cage
         slab = trimesh.creation.box(extents=[3, 0.1, 3])
         slab.apply_translation([0, -0.1, 0])
         g = rng.uniform(0.45, 0.7)
@@ -233,8 +253,12 @@ def render_one(rng, renderer):
     else:
         target = np.array([rng.uniform(-b / 4, b / 4), rng.uniform(0.25, 0.75) * height, rng.uniform(-h / 4, h / 4)])
         dist = rng.uniform(0.6, 1.7)
-    az, el = rng.uniform(0, 2 * math.pi), math.radians(rng.uniform(-15, 35))
-    eye = target + dist * np.array([math.cos(el) * math.cos(az), math.sin(el), math.cos(el) * math.sin(az)])
+    for _ in range(50):  # keep the camera outside the cage, like a real photo
+        az, el = rng.uniform(0, 2 * math.pi), math.radians(rng.uniform(-15, 35))
+        eye = target + dist * np.array([math.cos(el) * math.cos(az), math.sin(el), math.cos(el) * math.sin(az)])
+        if max(abs(eye[0]) - b / 2, abs(eye[2]) - h / 2) > 0.15:
+            break
+        dist *= 1.15
     cam = pyrender.PerspectiveCamera(yfov=math.radians(rng.uniform(45, 70)), aspectRatio=W / H)
     scene.add(cam, pose=look_at(eye, target))
     sun = look_at(target + np.array([rng.uniform(-2, 2), rng.uniform(1.5, 3), rng.uniform(-2, 2)]), target)
@@ -309,6 +333,7 @@ def main():
     ap.add_argument("--out", default="synthetic")
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--start", type=int, default=0)
+    ap.add_argument("--mockup", action="store_true", help="only the fab-lab cage of team/akanksha/MOCKUP.md")
     a = ap.parse_args()
     out = Path(a.out)
     (out / "train" / "images").mkdir(parents=True, exist_ok=True)
@@ -319,11 +344,11 @@ def main():
     counts = dict.fromkeys(NAMES, 0)
     for i in range(a.start, a.start + a.n):
         rng = np.random.default_rng(a.seed * 100003 + i)
-        img, labels = render_one(rng, renderer)
+        img, labels = render_one(rng, renderer, a.mockup)
         lines = to_lines(labels)
         if not lines:
             continue
-        name = f"syn_{i:04d}"
+        name = f"{'mock' if a.mockup else 'syn'}_{i:04d}"
         quality = [cv2.IMWRITE_JPEG_QUALITY, int(rng.integers(75, 95))]
         cv2.imwrite(str(out / "train" / "images" / f"{name}.jpg"), img, quality)
         (out / "train" / "labels" / f"{name}.txt").write_text("\n".join(lines) + "\n")
