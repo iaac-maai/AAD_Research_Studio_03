@@ -17,3 +17,7 @@ No public dataset labels stirrups or hooks (see `DATASET_CHECKS.md`), so we rend
 **Limits:** no shadows (the renderer's shadow maps fail on this Python version), smooth bars without ribs, no tie-wire, no people or clutter in front of the cage.
 
 **Run it again:** `PYOPENGL_PLATFORM=egl python team/diego/synthetic/make_cages.py --n 300 --out synthetic --seed 22` (needs `pyrender trimesh opencv-contrib-python`; ~1–3 s per image on a laptop CPU). Change `--seed` for a new set.
+
+## Fab-lab mock-up set (120 renders)
+
+`make_cages.py --mockup --n 120 --start 1000 --seed 33` renders only the cage of `team/akanksha/MOCKUP.md`: 400 × 400 × 1200 mm, 4 × Ø16 corner bars, Ø8 ties at 100 mm (0–500 mm at both ends) and 200 mm in the middle, 135° hooks with 80 mm tails, on a 500 × 500 board. Faults one at a time, like the real session: none 40 %, missing tie in the lower end zone 20 %, one 90° hook 20 %, one bar shifted 30 mm 20 %. Labels: 441 `bar`, 1,112 `stirrup`, 23 `hook_90`, 1,268 `hook_135`. Upload as batch `synthetic_mockup`; like the rest of the synthetic data it stays out of the test set, so the real fab-lab cage is still a fair test. The camera is kept outside the cage in this mode (and in any new run).
