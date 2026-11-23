@@ -29,6 +29,12 @@ Diego, Mon 23 Nov 2026. This is the model for Akshat's swap at 12:00.
 - **Stirrups and hooks are not measured yet.** All 63 test photos come from the real-photo sets, and those only have bars. In this version the stirrup and hook labels come only from the synthetic renders, and those are all in training. So this test cannot say whether the model tells a 90° hook from a 135° hook on a real cage. That number needs real labelled photos (next steps 1 and 2).
 - **Dense site cages are harder.** On a close-up of a dense column cage the confidences drop to 0.27–0.5 and some bars are missed, while clean mesh photos score 0.7–0.95.
 
+## First look at stirrups and hooks on real photos
+
+`prelabel_web_photos.py` ran `best.pt` (conf 0.25) over the 60 Wikimedia cage photos. It found **453 bars, 5 stirrups and 0 hooks**. Straight bars come out well, also in round pile cages. Round hoops and rectangular stirrups are mostly **not outlined at all**, and on one small cage the stirrup sides are outlined as `bar`.
+
+So what the model learned about stirrups and hooks from the synthetic renders does not carry over to real photos yet (the synthetic-to-real gap). It needs real photos with stirrup and hook labels. The 60 photos are now in Roboflow (batch `web_photos_prelabel`, split **test**, tags `web_photos` + `prelabel_unreviewed`): 54 with the model's bar outlines, 6 with none. Before version 2, someone has to add the stirrups and hooks by hand and remove the `prelabel_unreviewed` tag.
+
 ## For the app (Akshat)
 
 - The model's class is called `stirrup`. If the app still expects `tie`, set `CLASS_RENAME=stirrup=tie` (as in `team/akshat/MONDAY.md`).
@@ -37,6 +43,6 @@ Diego, Mon 23 Nov 2026. This is the model for Akshat's swap at 12:00.
 
 ## Next steps
 
-1. **60 Wikimedia photos** (`sources.csv`): pre-label them with this model (`prelabel_web_photos.py`), fix the outlines in Roboflow, and use them as a real test for stirrups and hooks.
+1. **60 Wikimedia photos** (`sources.csv`): pre-labelled and uploaded (see above). Fix the bar outlines, add stirrups and hooks by hand, and use them as a real test for stirrups and hooks.
 2. **Fab-lab mock-up** (after Akanksha's session): about 15 photos of the one cage, all in the test set. This is the honest score for the demo.
 3. Then train version 2 with both added, and compare it with this baseline on the same test photos.
