@@ -9,6 +9,8 @@ Four classes, all **polygons**: `bar · stirrup · hook_90 · hook_135`.
 | `hook_90` | Bent end of a stirrup at about 90° | Its own polygon, from the bend to the tip, drawn **on top of** the `stirrup` (overlap is fine in instance segmentation) |
 | `hook_135` | Bent end of a stirrup at about 135° (the seismic hook Eurocode 8 asks for) | Same |
 
+**Labels say what is there, not whether it is right.** A stirrup is always `stirrup`, whatever its hooks. Each bent end gets its own hook polygon with the angle it has: a stirrup with one 135° end and one 90° end is 1 `stirrup` + 1 `hook_135` + 1 `hook_90`, in the same photo, no copies. Whether a 90° hook is a fault is decided later by `check.py` (Eurocode 8), not by the labels.
+
 **The class is called `stirrup` (renamed from `tie` on 22 Nov 2026).** "Tie" was ambiguous: it was read both as the stirrup and as the tie-wire at a crossing. The Roboflow project now uses `stirrup`; it had 0 labels when renamed, so nothing was lost. Tie-wire at crossings is **not labelled**.
 
 **For the app (Akshat):** `concrete_evidence/check.py` still calls this class `tie` internally (`check_ties` measures the gaps between stirrups against the Eurocode 8 spacing per zone). No code change needed: set `CLASS_RENAME=stirrup=tie` on the model server when Diego's model goes in (as `team/akshat/MONDAY.md` step 3 already allows).
