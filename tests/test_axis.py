@@ -107,3 +107,13 @@ def test_bars_running_across_are_not_counted():
         across.append(record(10 + k, "bar", 0.9, (50, 290 + 300 * k, 650, 310 + 300 * k), 1.0, poly))
     r = run({"mm_per_px": 1.0, "detections": along + across}, {"bar_diameter_mm": 16, "bar_count": 4})
     assert next(c for c in r["checks"] if c["check"] == "bar_count")["status"] == "pass"
+
+
+@pytest.mark.parametrize("angle", [0, 30, 45, 80])
+@pytest.mark.parametrize("width", [6, 9, 24])
+def test_thickness_is_the_bar_width_at_any_angle(width, angle):
+    """Without markers the scale is the bar's diameter over this thickness, so a few % off moves every mm."""
+    box = cv2.boxPoints(((500, 500), (width, 600), angle))
+    m = measure(box.tolist())
+    assert m["thickness_px"] == pytest.approx(width, rel=0.03)  # was 4.5-8 % off before
+    assert m["axis_length_px"] == pytest.approx(600, rel=0.03)

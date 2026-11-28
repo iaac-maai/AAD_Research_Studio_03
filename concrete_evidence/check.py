@@ -61,7 +61,9 @@ def scale(capture: dict, schedule: dict) -> tuple[float | None, str]:
     """mm per pixel and where it came from: 'markers', 'diameter' or 'none'."""
     if capture.get("mm_per_px"):
         return float(capture["mm_per_px"]), "markers"
-    widths = [d["width_px"] for d in capture.get("detections", []) if d.get("class") == BAR and d.get("width_px")]
+    # across the axis when the outline has one (the width the page shows), else the box's short side
+    widths = [d.get("thickness_px") or d["width_px"] for d in capture.get("detections", [])
+              if d.get("class") == BAR and (d.get("thickness_px") or d.get("width_px"))]
     if widths:
         return float(schedule["bar_diameter_mm"]) / median(widths), "diameter"
     return None, "none"

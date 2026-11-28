@@ -4,13 +4,13 @@ Feedback from Rasha and Nacho (26 Nov): segment the rebar, put a polyline on its
 every segment. Training only has to find the steel; the measuring is geometry:
 
     mask ──► thin to a 1 px skeleton ──► longest path through it ──► straighten into segments
-         └─► distance to the edge along the skeleton = half the bar's thickness
+         └─► outline area / axis length = the bar's thickness
 
 What comes out, in pixels (capture.record adds mm when the scale is known):
   axis_px       the corner points of the polyline, end to end
   segments_px   the length of each straight segment
   bends_deg     how far the bar turns at each corner: 90 for a 90 degree hook, 135 for a 135 degree hook
-  thickness_px  the bar's thickness (twice the median distance from the axis to the edge)
+  thickness_px  the bar's thickness: the outline's area over its axis length
   axis_length_px the length along the axis, ends included
 
 Limits: angles and lengths are measured in the photo's plane. A bend seen at a slant looks sharper or
@@ -106,9 +106,10 @@ def measure(polygon, min_bend_deg: float = MIN_BEND_DEG) -> dict | None:
     path = _longest_path(_thin(mask))
     if len(path) < 2:
         return None
-    dist = cv2.distanceTransform(mask, cv2.DIST_L2, 3)
-    half = float(np.median(dist[path[:, 1].astype(int), path[:, 0].astype(int)]))
-    thickness = max(1.0, 2 * half)
+    dist = cv2.distanceTransform(mask, cv2.DIST_L2, cv2.DIST_MASK_PRECISE)  # exact: the 3x3 mask reads 4.5% short
+    # the distance runs from the axis to the first pixel outside, about half a pixel past the edge
+    half = max(0.5, float(np.median(dist[path[:, 1].astype(int), path[:, 0].astype(int)])) - 0.5)
+    thickness = 2 * half  # first guess, refined below from the outline's area
 
     # straighten: keep the corners, then drop corners that barely turn
     corners = cv2.approxPolyDP(path.reshape(-1, 1, 2), max(2.0, 0.75 * thickness), False).reshape(-1, 2)
@@ -132,6 +133,10 @@ def measure(polygon, min_bend_deg: float = MIN_BEND_DEG) -> dict | None:
     corners += [x0, y0]
 
     segs = [float(np.linalg.norm(corners[i + 1] - corners[i])) for i in range(len(corners) - 1)]
+    # area / length is the width to a fraction of a pixel on a straight bar (the distance above is whole pixels)
+    area = float(cv2.contourArea(pts.astype(np.float32)))
+    if sum(segs) > 0 and area > 0:
+        thickness = max(1.0, area / sum(segs))
     bends = [_turn(corners[i - 1], corners[i], corners[i + 1]) for i in range(1, len(corners) - 1)]
     return {"axis_px": [[round(float(x), 1), round(float(y), 1)] for x, y in corners],
             "segments_px": [round(s, 1) for s in segs],

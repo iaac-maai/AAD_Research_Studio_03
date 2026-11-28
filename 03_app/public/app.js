@@ -344,12 +344,18 @@ async function sendReview(signOff) {
     const i = Number(r.name.slice(1));
     return { fault_index: i, decision: r.value, note: document.querySelector(`#faults .note[data-fault="${i}"]`)?.value || "" };
   });
-  const res = await fetch(`/api/reviews/${current.id}`, {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ reviewer, decisions, sign_off: signOff }),
-  });
-  const data = await res.json();
-  if (!res.ok) return say($("review-status"), data.error || "Not saved. Try again.", "error");
+  let res, data = {};
+  try {
+    res = await fetch(`/api/reviews/${current.id}`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reviewer, decisions, sign_off: signOff }),
+    });
+  } catch {
+    return say($("review-status"), "Not saved: no connection. Check the signal and try again.", "error");
+  }
+  try { data = await res.json(); } catch { /* an error page, not JSON */ }
+  if (res.status === 401) return say($("review-status"), "Not saved: you were signed out. Sign in again, then save.", "error");
+  if (!res.ok) return say($("review-status"), data.error || `Not saved (error ${res.status}). Try again.`, "error");
   await openCheck(current.id);
   say($("review-status"), signOff ? `Signed off by ${reviewer}.` : `Saved. ${STATUS_LABEL[data.review_status]}.`, "ok");
   loadHistory();
