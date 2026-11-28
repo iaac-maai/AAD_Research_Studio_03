@@ -2,19 +2,16 @@
 
 One folder each. Put **your own work** here: your plan, notes, results, scores, small screenshots and diagrams.
 
-**Deadlines and who waits on whom:** [`TIMELINE.md`](TIMELINE.md).
-
 | Folder | Who | Holds |
 |---|---|---|
-| `team/akshat/` | Akshat | plan, model-server and app notes, memory tests, sample results |
-| `team/diego/` | Diego | plan, dataset checks, `sources.csv`, labelling notes, training scores |
-| `team/akanksha/` | Akanksha | plan, Eurocode 8 check, mock-up design, wireframes, depth test, pitch outline |
+| `team/diego/` | Diego | dataset checks, `sources.csv`, labelling notes, training scores |
+| `team/akanksha/` | Akanksha | Eurocode 8 check, fix wording, schedule-from-PDF spec, wireframe |
 
 **Shared code does not go here.** It goes into the shared folders, through a pull request:
 
 | What | Where |
 |---|---|
-| the check, depth, markers, all Python the pipeline uses | `concrete_evidence/` |
+| the check, markers, all Python the pipeline uses | `concrete_evidence/` |
 | the model server | `02_model_server/` |
 | the Cloudflare app (incl. the result page) | `03_app/` |
 | schedules (JSON) | `live/` |

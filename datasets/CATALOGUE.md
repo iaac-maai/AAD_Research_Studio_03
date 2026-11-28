@@ -22,8 +22,6 @@ Keep a CSV for sources 1–3: file, source URL, author, licence. CC BY and CC BY
 
 **Target:** 300+ labelled images by Sun 22 Nov night, baseline trained Mon 23 Nov. Keep the mock-up photos of one cage out of training: that's the honest test set.
 
-**Depth filter:** if the model will run with Depth Anything in front (`--depth-filter`), filter the labelled set the same way before training: `python pipeline.py depth data/ours --out data/ours_depth`.
-
 ## Usable (open licence)
 
 | Dataset | What it shows | Labels | Size | Licence | Status |
@@ -62,12 +60,10 @@ These appear on Roboflow Universe under CC BY 4.0 according to search listings, 
 | Model | Used for | Licence | Pinned |
 |---|---|---|---|
 | YOLOv8n-seg (Ultralytics) | the segmentation model we fine-tune | AGPL-3.0 | `ultralytics==8.4.216` |
-| [Depth Anything V2 Small](https://huggingface.co/depth-anything/Depth-Anything-V2-Small-hf) | the depth filter before YOLO (`concrete_evidence/depth.py`) | Apache-2.0 (checked 21 Nov 2026). **Base and Large are CC BY-NC: not used** | revision `5426e4f0` |
-| YuNet face detector (OpenCV Zoo) | blurring faces in every saved frame | MIT | SHA256 in `concrete_evidence/privacy.py` |
 
 ## Our own data (the only source of real faults)
 
-- **Fab-lab column cage** (source 4): photos of each face with the 4 markers, correct and with planted faults. Also the test photos for the depth filter and the live demo.
+- **Fab-lab column cage** (source 4): photos of each face with the 4 markers, correct and with planted faults. Also the test photos for the live demo.
 - **Skewer mats**: good mat and mistake mat (one bar removed, one shifted 10 mm), 20–30 top-down photos each with 4 corner markers. Photos and a trained `skewer_best.pt` are in `~/concrete-evidence/code/skewer_yolo_notebook`.
 - **Synthetic mats** from our `ce/synth.py` generator: shifted, missing, wrong-size and sagging bars, each with an answer key.
 
@@ -75,5 +71,4 @@ These appear on Roboflow Universe under CC BY 4.0 according to search listings, 
 
 - SORD: Huang, T.-W., Chen, Y.-H., Lin, J. J., & Chen, C.-S. (2025). *Deep learning without human labeling for on-site rebar instance segmentation using synthetic BIM data and domain adaptation.* Automation in Construction, 171, 105953.
 - ConRebSeg: Schmidt, P., & Nalpantidis, L. (2025). *ConRebSeg: A segmentation dataset for reinforced concrete construction.* Automation in Construction, 171.
-- Depth Anything V2: Yang, L., Kang, B., Huang, Z., Zhao, Z., Xu, X., Feng, J., & Zhao, H. (2024). *Depth Anything V2.* NeurIPS 2024.
 - Roboflow sets and open-licence photos: credit each project page or author (CC BY 4.0 / CC BY-SA), listed in the sources CSV.
