@@ -62,7 +62,7 @@ def test_one_photo_end_to_end_without_markers_uses_bar_width():
     assert chk["scale"]["source"] == "diameter" and out["counts"] == {"bar": 4, "tie": 4}
     tie = [c for c in chk["checks"] if c["check"] == "tie_spacing"]
     assert tie[0]["status"] == "fail" and tie[0]["track_ids"] == [6, 7]  # pieces numbered 1..8
-    assert chk["fixes"][0].startswith("C1, face A: Add")
+    assert chk["fixes"][0].startswith("Add")
     assert out["annotated"].shape == (800, 700, 3)
     assert (out["annotated"] == RED).all(axis=-1).any()  # the faulty ties are drawn red
     assert all(len(d["polygon"]) == 4 for d in out["detections"])

@@ -8,7 +8,8 @@ Every check is a formula on the detections in mm. The result never says
 "approved": a person on site confirms or rejects each fault (human in the
 loop), because the camera can miss a hidden bar or read one wrongly.
 
-Column ties: with the column size in the schedule, the Eurocode 8 limits
+Column ties: with the column size in the schedule, the code limits (Eurocode 2, plus
+Eurocode 8 unless the schedule says ductility "none")
 (codes.py) are added on top. Ties are checked zone by zone ("end" near the
 floors, "middle" between); the capture or the CLI says which zone the photo shows.
 Every fault also gets a plain fix instruction (fixes.py).
@@ -27,11 +28,13 @@ from statistics import median
 
 import numpy as np
 
-from . import codes
+from . import codes, location
 
 DEFAULTS = {
-    "spacing_tol_mm": 10.0,   # how far a gap may be off the scheduled spacing
-    "diameter_tol_mm": 4.0,   # how far a bar's measured width may be off its diameter
+    "spacing_tol_mm": 25.0,   # bars: how far a gap may be off the drawing. Wide on purpose: only a bar
+                              # clearly out of place or missing is reported, not mm the camera can't see
+    "diameter_tol_mm": 5.0,   # bars: only an obvious size mix-up (e.g. 10 for 16), not neighbouring sizes
+    "tie_tol_mm": 10.0,       # ties: how far a gap may go over its limit (ties and hooks are the focus)
     "hook_angle": 135,        # stirrups and ties in columns and beams: 135 degree hooks
     "hook_tail_factor": 10,   # tail at least this many bar diameters; check your code (EC2 / EC8 / local)
     "parallel_deg": 20.0,     # bars within this angle of the main direction count as one layer
@@ -124,12 +127,22 @@ def _main_angle(angles):
     return float(np.degrees(np.angle(np.mean(np.exp(2j * np.radians(angles))))) / 2) % 180.0
 
 
-def code_limits(s):
-    """Eurocode 8 limits for this column, or None when the schedule lacks the column size."""
+def place_rules(s):
+    """Where the column is (schedule "city", or "lat"/"lon" from the photo) and which rules follow,
+    or None when the schedule gives no place. The engineer's own "ductility" always wins."""
+    if not (s.get("city") or (s.get("lat") is not None and s.get("lon") is not None)):
+        return None
+    return location.rules_for(s.get("city"), s.get("country"), s.get("lat"), s.get("lon"), s.get("ductility"))
+
+
+def code_limits(s, place=None):
+    """Code limits for this column (codes.py), or None when the schedule lacks the column size."""
     if not s.get("column_mm"):
         return None
+    ductility = (place or {}).get("ductility") or s.get("ductility", "DCM")
+    country = (place or {}).get("national_annex") or s.get("country")
     return codes.column_ties(s["column_mm"], s.get("cover_mm", 30), s["bar_diameter_mm"],
-                             s.get("tie_diameter_mm") or 8, s.get("clear_height_mm"), s.get("ductility", "DCM"))
+                             s.get("tie_diameter_mm") or 8, s.get("clear_height_mm"), ductility, country)
 
 
 def check_schedule_vs_code(s, limits):
@@ -143,11 +156,22 @@ def check_schedule_vs_code(s, limits):
         if want and float(want) > cap:
             out.append(_item("schedule_vs_code", "fail",
                              f"schedule asks for ties every {float(want):g} mm in the {zone} zone; "
-                             f"Eurocode 8 ({limits['ductility']}) allows at most {cap:g} mm", float(want), cap))
-    if int(s["hook_angle"]) != limits["hook_angle"]:
+                             f"{_code_name(limits)} allows at most {cap:g} mm", float(want), cap))
+    if limits["hook_angle"] and int(s["hook_angle"]) != limits["hook_angle"]:
         out.append(_item("schedule_vs_code", "fail", f"schedule asks for {s['hook_angle']} degree hooks; "
-                         "Eurocode 8 needs 135", int(s["hook_angle"]), 135))
+                         f"Eurocode 8 needs {limits['hook_angle']}", int(s["hook_angle"]), limits["hook_angle"]))
+    tie = s.get("tie_diameter_mm")
+    if tie and limits.get("tie_diameter_min_mm") and float(tie) < limits["tie_diameter_min_mm"]:
+        out.append(_item("schedule_vs_code", "fail", f"schedule asks for {float(tie):g} mm ties; "
+                         f"{_code_name(limits)} needs at least {limits['tie_diameter_min_mm']:g} mm",
+                         float(tie), limits["tie_diameter_min_mm"]))
     return out
+
+
+def _code_name(limits) -> str:
+    if limits.get("code") == "EC2":
+        return "Eurocode 2"
+    return f"Eurocode 8 ({limits['ductility']})"
 
 
 def tie_limit(s, limits, zone):
@@ -178,7 +202,7 @@ def check_ties(dets, bars, s, mm, limits, zone):
     if uy < -1e-9 or (abs(uy) <= 1e-9 and ux < 0):  # read top to bottom
         ux, uy = -ux, -uy
     pos = sorted(((t["axis_centre_px"][0] * ux + t["axis_centre_px"][1] * uy) * mm, t["track_id"]) for t in ties)
-    tol, out = float(s["spacing_tol_mm"]), []
+    tol, out = float(s["tie_tol_mm"]), []
     first = pos[0][0]
     for (p0, t0), (p1, t1) in zip(pos, pos[1:], strict=False):
         gap = round(float(p1 - p0), 1)
@@ -190,15 +214,18 @@ def check_ties(dets, bars, s, mm, limits, zone):
     return out or [_item("tie_spacing", "pass", f"{len(pos) - 1} tie gap(s), all within {limit:g} mm ({zone} zone)")]
 
 
-def check_hooks(dets, s, mm):
+def check_hooks(dets, s, mm, limits=None):
     hooks = [d for d in dets if str(d.get("class", "")).startswith("hook_")]
     if not hooks:
         return [_item("hooks", "unknown", "no hooks seen in this frame")]
     want = int(s["hook_angle"])
-    tail_min = float(s["hook_tail_factor"]) * float(s.get("tie_diameter_mm") or s["bar_diameter_mm"])
+    by_angle = (limits or {}).get("hook_tail_min_by_angle_mm")  # Eurocode 2 only: the tail depends on the bend
     out = []
     for h in hooks:
         angle = int(h["class"].split("_")[1]) if h["class"].split("_")[1].isdigit() else None
+        tail_min = float(s["hook_tail_factor"]) * float(s.get("tie_diameter_mm") or s["bar_diameter_mm"])
+        if by_angle and angle in by_angle:  # the code's tail for this bend, raised only by a drawing that asks for more
+            tail_min = max(by_angle[angle], tail_min if s.get("_tail_on_drawing") else 0)
         if angle != want:
             out.append(_item("hook_angle", "fail", f"{angle} degree hook, scheduled {want}", angle, want,
                              [h["track_id"]]))
@@ -218,13 +245,16 @@ def run(capture: dict, schedule: dict, zone: str | None = None, face: str | None
     """
     from .fixes import instructions
 
-    s = {**DEFAULTS, **schedule}
+    # a drawing that asks for its own tail length (not just the default, which callers may have merged in)
+    own_tail = schedule.get("hook_tail_factor") not in (None, DEFAULTS["hook_tail_factor"])
+    s = {**DEFAULTS, **schedule, "_tail_on_drawing": own_tail}
     zone = zone or capture.get("zone") or "end"
     if zone not in ZONES:
         raise ValueError(f"zone must be one of {ZONES}")
     face = face or capture.get("face") or ""
-    limits = code_limits(s)
-    if limits:
+    place = place_rules(s)
+    limits = code_limits(s, place)
+    if limits and limits["hook_angle"]:  # Eurocode 8: tails at least 10 x tie diameter
         s["hook_tail_factor"] = max(float(s["hook_tail_factor"]), 10.0)
     dets = capture.get("detections", [])
     bars = [d for d in dets if d.get("class") == BAR]
@@ -234,9 +264,9 @@ def run(capture: dict, schedule: dict, zone: str | None = None, face: str | None
         items += [_item("scale", "unknown", "no markers and no bar outlines: nothing can be measured")]
     else:
         items += (check_count(bars, s) + check_diameter(bars, s, mm, source) + check_spacing(bars, s, mm)
-                  + check_ties(dets, bars, s, mm, limits, zone) + check_hooks(dets, s, mm))
+                  + check_ties(dets, bars, s, mm, limits, zone) + check_hooks(dets, s, mm, limits))
     faults = [i for i in items if i["status"] == "fail"]
-    result = {"element": s.get("element", ""), "face": face, "zone": zone,
+    result = {"element": s.get("element", ""), "face": face, "zone": zone, "place": place,
               "scale": {"mm_per_px": mm and round(mm, 4), "source": source},
               "code": limits, "faults": len(faults), "checks": items,
               "review": {"status": "pending", "by": None, "note": "a person confirms or rejects each fault on site"}}
@@ -255,5 +285,7 @@ def summary(result: dict) -> str:
         lines += [f"  - {f}" for f in result["fixes"]]
     if result.get("code"):
         lines.append(f"Limits: {result['code']['source']}")
+    if result.get("place"):
+        lines.append(f"Place: {result['place']['note']}")
     lines.append("Review: pending. Confirm or reject each fault before the pour.")
     return "\n".join(lines)

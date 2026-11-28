@@ -1,20 +1,19 @@
-# Fix wording review
+# Fix wording: what the crew reads
 
-The following changes are recommended for `concrete_evidence/fixes.py`.
+Akanksha. One line per fault, read on a phone next to the cage (`concrete_evidence/fixes.py`).
+Rule: **what to do, where, and in brackets why** (what was found against what is needed). The element and face are shown once with the result, not in every line.
 
-| Original pattern | Crew-facing wording | Why |
-|---|---|---|
-| `Add 2 bar(s)...` | `Add 2 longitudinal bar(s). The photo shows 2; the schedule requires 4. Stop and position...` | Explains what to count and requires a stop before retying. |
-| `Check the 1 extra bar(s)...` | `Remove or recheck 1 extra longitudinal bar(s)...` | Opens with the action and avoids a purely model-facing check. |
-| `Bar 3 looks 10 mm... replace it with...` | `Check bar 3... Replace it only after confirming the diameter and cut label.` | Uses an unambiguous double-check instead of implying the model can certify the bar. |
-| `Rebend hook 8 to 135 degrees (now 90).` | `Rebend hook 8 to 135 degrees; it is currently 90 degrees.` | Keeps the noun and measured angle clear. |
+| Fault | Instruction |
+|---|---|
+| Gap where a bar is missing | *Add a bar between bars 1 and 2 (gap 200 mm, should be 100 mm).* |
+| Missing bar, no gap to show where | *Add 1 bar (found 3, drawing needs 4).* |
+| Extra bar | *Check the 1 extra bar before removing anything (found 5, drawing needs 4).* |
+| One bar out of place | *Move bar 1 35 mm towards bar 0 (gaps 123 and 53 mm, should be 88 mm).* |
+| Two bars too close or far | *Move bars 3 and 4 to 150 mm apart (now 135 mm).* |
+| Bar size | *Check bar 3: it looks Ø10, the drawing says Ø16.* |
+| Tie spacing | *Add 1 tie 90–270 mm below the top tie (gap 180 mm, max 90 mm here).* |
+| Hook angle | *Rebend hook 8 to 135° (now 90°; 90° hooks open in earthquakes).* |
+| Hook tail | *Replace the tie with hook 8 (tail 50 mm, needs 80 mm).* |
+| Drawing against the code | *Ask the engineer: the drawing has ties every 200 mm, the code allows 128 mm max.* |
 
-The existing tie instruction is acceptable:
-
-`Add 2 tie(s) between 100 and 330 mm from the first tie in view (gap 230 mm, at most 100 mm in the end zone).`
-
-It is actionable because it gives the tie count, measured position range, gap and zone limit.
-
-The schedule-vs-code instruction is acceptable as an engineer escalation:
-
-`Ask the engineer before the pour: ...`
+Bar and hook numbers match the labels on the checked photo. One shifted bar gives one line, not two. When a gap already shows where a bar is missing, the bare count line is left out.

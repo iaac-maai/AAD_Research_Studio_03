@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "concrete-evidence/schedule.schema.json",
+  "title": "Column schedule",
+  "description": "What the engineer's drawing says one column must be. Filled by the schedule form or from an uploaded PDF, always confirmed by a person before a check runs. Read by concrete_evidence/check.py and codes.py.",
+  "type": "object",
+  "required": [
+    "bar_diameter_mm"
+  ],
+  "properties": {
+    "element": {
+      "type": "string",
+      "description": "Column mark on the drawing, e.g. \"C1\" or \"P-12\""
+    },
+    "column_mm": {
+      "type": "array",
+      "items": {
+        "type": "number",
+        "minimum": 150,
+        "maximum": 2000
+      },
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "Cross-section b × h in mm. Needed for the Eurocode limits"
+    },
+    "cover_mm": {
+      "type": "number",
+      "minimum": 10,
+      "maximum": 100,
+      "description": "Nominal cover to the ties (outermost steel)"
+    },
+    "clear_height_mm": {
+      "type": "number",
+      "minimum": 500,
+      "maximum": 20000,
+      "description": "Floor-to-soffit height of the column"
+    },
+    "city": {
+      "type": "string",
+      "description": "Site city; the app derives country, seismic level and code from it"
+    },
+    "country": {
+      "type": "string",
+      "description": "ISO 3166 code, e.g. \"ES\". Derived from city when possible"
+    },
+    "lat": {
+      "type": "number",
+      "minimum": -90,
+      "maximum": 90,
+      "description": "Site latitude, e.g. from the photo's GPS; used when no city is given"
+    },
+    "lon": {
+      "type": "number",
+      "minimum": -180,
+      "maximum": 180,
+      "description": "Site longitude"
+    },
+    "ductility": {
+      "enum": [
+        "none",
+        "DCL",
+        "DCM",
+        "DCH"
+      ],
+      "description": "none/DCL = Eurocode 2 only; DCM/DCH = Eurocode 8 on top"
+    },
+    "bar_diameter_mm": {
+      "enum": [
+        8,
+        10,
+        12,
+        14,
+        16,
+        20,
+        25,
+        32,
+        40
+      ],
+      "description": "Longitudinal (main) bar diameter"
+    },
+    "bar_count": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 20,
+      "description": "Bars visible on ONE face, corners included (a 4-bar square column shows 2)"
+    },
+    "bar_spacing_mm": {
+      "type": "number",
+      "minimum": 30,
+      "maximum": 600,
+      "description": "Centre-to-centre spacing of the bars on one face"
+    },
+    "tie_diameter_mm": {
+      "enum": [
+        5,
+        6,
+        8,
+        10,
+        12,
+        14,
+        16
+      ],
+      "description": "Tie / stirrup (cerco) diameter"
+    },
+    "tie_spacing_mm": {
+      "type": "object",
+      "required": [
+        "end",
+        "middle"
+      ],
+      "properties": {
+        "end": {
+          "type": "number",
+          "minimum": 30,
+          "maximum": 400
+        },
+        "middle": {
+          "type": "number",
+          "minimum": 30,
+          "maximum": 600
+        }
+      },
+      "description": "Tie spacing near the floors (end) and in between (middle)"
+    },
+    "hook_angle": {
+      "enum": [
+        90,
+        135,
+        180
+      ],
+      "description": "Hook bend at the tie ends"
+    },
+    "hook_tail_factor": {
+      "type": "number",
+      "minimum": 3,
+      "maximum": 20,
+      "description": "Hook tail as a multiple of the tie diameter"
+    },
+    "spacing_tol_mm": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Advanced: bar spacing tolerance (default 25)"
+    },
+    "diameter_tol_mm": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Advanced: bar size tolerance (default 5)"
+    },
+    "tie_tol_mm": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Advanced: tie spacing tolerance (default 10)"
+    }
+  }
+}

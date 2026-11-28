@@ -99,3 +99,34 @@ def test_example_schedule_loads_and_needs_diameter(tmp_path):
     bad.write_text(json.dumps({"bar_count": 4}))
     with pytest.raises(ValueError):
         load_schedule(bad)
+
+
+def test_one_shifted_bar_gives_one_fix():
+    from concrete_evidence.check import run
+    sched = {"element": "C1", "bar_diameter_mm": 16, "bar_count": 3, "bar_spacing_mm": 88, "spacing_tol_mm": 10}
+    r = run(capture([bar(0, 100), bar(1, 223), bar(2, 276)]), sched, face="C")  # middle bar 35 mm off
+    assert len([c for c in r["checks"] if c["check"] == "spacing"]) == 2
+    assert r["fixes"] == ["Move bar 1 35 mm towards bar 0 (gaps 123 and 53 mm, should be 88 mm)."]
+
+
+def test_a_missing_bar_is_not_read_as_shifted():
+    from concrete_evidence.check import run
+    sched = {"element": "C1", "bar_diameter_mm": 16, "bar_count": 4, "bar_spacing_mm": 100, "spacing_tol_mm": 10}
+    r = run(capture([bar(0, 100), bar(1, 200), bar(2, 400)]), sched)  # 200 mm gap: bar missing
+    assert "Add a bar between bars 1 and 2 (gap 200 mm, should be 100 mm)." in r["fixes"]
+
+
+def test_small_bar_deviations_are_not_faults():
+    from concrete_evidence.check import run
+    sched = {"element": "C1", "bar_diameter_mm": 16, "bar_count": 3, "bar_spacing_mm": 100}  # default tolerances
+    r = run(capture([bar(0, 100), bar(1, 215), bar(2, 300)]), sched)  # middle bar 15 mm off: camera noise level
+    assert r["faults"] == 0
+    r = run(capture([bar(0, 100), bar(1, 240), bar(2, 300)]), sched)  # 40 mm off: clearly out of place
+    assert r["fixes"] == ["Move bar 1 40 mm towards bar 0 (gaps 140 and 60 mm, should be 100 mm)."]
+
+
+def test_example_schedules_only_use_fields_the_schema_knows():
+    root = ROOT / "live"
+    known = set(json.loads((root / "schedule.schema.json").read_text())["properties"])
+    for name in ("schedule_example.json", "schedule_mockup.json"):
+        assert set(json.loads((root / name).read_text())) <= known, name
