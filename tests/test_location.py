@@ -19,6 +19,9 @@ def test_spanish_seismic_value_from_the_annex_grid():
     bcn = rules_for("Barcelona")
     assert bcn["country"] == "ES" and 0.07 < bcn["agR_g"] < 0.1 and bcn["ductility"] == "DCM"
     assert rules_for("Bilbao")["ductility"] == "none"  # under 0.04 g: very low seismicity, Eurocode 2 only
+    madrid = rules_for("Madrid")  # not in table AN.5: the table leaves out the very low centre of Spain
+    assert madrid["ductility"] == "none" and madrid["agR_g"] is None and madrid["national_annex"] == "ES"
+    assert rules_for("Madrid", ductility="DCM")["ductility"] == "DCM"  # the engineer can still choose Eurocode 8
 
 
 def test_engineer_choice_wins_and_unknowns_stay_strict():

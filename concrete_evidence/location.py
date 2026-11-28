@@ -5,7 +5,8 @@ The user names only the city (or the photo's GPS gives coordinates). From that:
   Spain   -> ag,R, the reference peak ground acceleration on rock, from the grid in the
              Spanish annex to Eurocode 8 (AN/UNE-EN 1998-1, table AN.5), interpolated as its
              3.2.1(2) says: the point itself, else the 2 or 4 nearest grid points weighted by 1/distance
-  ag,R    -> which code: under 0.04 g is "very low seismicity" in Spain (AN 3.2.1(5)), where
+  ag,R    -> which code (a Spanish place missing from the table is very low too: the table leaves
+             out central Spain, under 0.04 g): under 0.04 g is "very low seismicity" in Spain (AN 3.2.1(5)), where
              Eurocode 8 need not be applied, so Eurocode 2 only; otherwise Eurocode 8 (DCM unless
              the engineer chose otherwise) on top of Eurocode 2.
 
@@ -100,9 +101,11 @@ def rules_for(city: str | None = None, country: str | None = None, lat: float | 
     name = f"{place['name']}, {country}" if place else (f"{lat:.3f}, {lon:.3f}" if lat is not None else "unknown")
     if country == "ES" and lat is not None:
         hz = es_seismic(lat, lon)
-        if hz is None:
-            duct = ductility or "DCM"
-            note = f"{name}: outside the Spanish seismic grid, Eurocode 8 ({duct}) assumed. Ask the engineer."
+        if hz is None:  # table AN.5 leaves out the very low areas (central Spain: Madrid, Toledo, Valladolid)
+            duct = ductility or "none"
+            code = "Eurocode 2 only" if duct in ("none", "DCL") else f"Eurocode 8 ({duct})"
+            note = (f"{name}: not in the Spanish annex table, so agR under 0.04 g (very low seismicity), "
+                    f"{code}, Spanish annex values. Ask the engineer if unsure.")
             return {"place": name, "country": "ES", "agR_g": None, "K": None, "ductility": duct,
                     "national_annex": "ES", "note": note}
         duct = ductility or ("none" if hz["agR_g"] < VERY_LOW_ES else "DCM")
