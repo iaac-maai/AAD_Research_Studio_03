@@ -6,7 +6,7 @@ const EXAMPLE_SCHEDULE = {
   cover_mm: 30,
   clear_height_mm: 3000,
   ductility: "DCM",
-  bar_diameter_mm: 16,
+  bar_diameter_mm: 12, // the common column bar on site; the worker picks the real size in the menu
   bar_count: 3,
   bar_spacing_mm: 155,
   tie_diameter_mm: 8,
@@ -295,7 +295,7 @@ function showPieces(c) {
     const tr = document.createElement("tr");
     const isTie = d.class === "tie" || d.class === "stirrup";
     const isHook = String(d.class).startsWith("hook");
-    const want = isTie ? Number(s.tie_diameter_mm || 8) : Number(s.bar_diameter_mm || 16);
+    const want = isTie ? Number(s.tie_diameter_mm || 8) : Number(s.bar_diameter_mm || 12);
     let verdict = "—", state = "";
     const thick = d.thickness_px ?? d.width_px; // measured across the axis when there is one
     if (mm && thick && !isHook) {
