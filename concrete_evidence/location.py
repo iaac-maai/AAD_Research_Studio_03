@@ -63,6 +63,18 @@ def find_city(query: str, country: str | None = None, limit: int = 8) -> list[di
     return [{k: c[k] for k in ("name", "country", "lat", "lon")} for c in out[:limit]]
 
 
+NEAR_KM = 50  # a photo's GPS further than this from any listed town gets no place name
+
+
+def nearest_city(lat: float, lon: float) -> dict | None:
+    """The listed town nearest to a point (the photo's GPS), within NEAR_KM, as name/country/lat/lon.
+    Gives the country (so Spanish values apply) and a name to show instead of raw coordinates."""
+    k = math.cos(math.radians(lat))
+    best = min(_cities(), key=lambda c: (c["lat"] - lat) ** 2 + ((c["lon"] - lon) * k) ** 2)
+    km = 111.2 * math.hypot(best["lat"] - lat, (best["lon"] - lon) * k)
+    return {key: best[key] for key in ("name", "country", "lat", "lon")} if km <= NEAR_KM else None
+
+
 def es_seismic(lat: float, lon: float) -> dict | None:
     """ag,R (g) and K at a point in Spain from the annex grid, or None outside the grid."""
     grid = _grid()
@@ -97,8 +109,11 @@ def rules_for(city: str | None = None, country: str | None = None, lat: float | 
                     "note": f"{city} not found: European recommended values, Eurocode 8 (DCM). Pick a nearby town."}
         place = matches[0]
         lat, lon, country = place["lat"], place["lon"], place["country"]
+    elif lat is not None and lon is not None:  # the photo's GPS: name the nearest town, never the raw coordinates
+        place = nearest_city(lat, lon)
+        country = country or (place and place["country"])
     country = (country or "").upper() or None
-    name = f"{place['name']}, {country}" if place else (f"{lat:.3f}, {lon:.3f}" if lat is not None else "unknown")
+    name = (f"{place['name']}, {country}" if city else f"near {place['name']}, {country}") if place else "unknown place"
     if country == "ES" and lat is not None:
         hz = es_seismic(lat, lon)
         if hz is None:  # table AN.5 leaves out the very low areas (central Spain: Madrid, Toledo, Valladolid)

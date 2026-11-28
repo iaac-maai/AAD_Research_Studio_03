@@ -10,9 +10,9 @@ const EXAMPLE_SCHEDULE = {
   bar_count: 3,
   bar_spacing_mm: 155,
   tie_diameter_mm: 8,
-  tie_spacing_mm: { end: 100, middle: 200 },
-  spacing_tol_mm: 10,
-  diameter_tol_mm: 4,
+  tie_spacing_mm: { end: 90, middle: 180 }, // EC8 DCM with Ø12 bars: end zone at most 8 × 12 = 96 mm
+  spacing_tol_mm: 25,
+  diameter_tol_mm: 5,
   hook_angle: 135,
   hook_tail_factor: 10,
 };
@@ -78,6 +78,40 @@ async function shrink(file) {
   return new Promise((ok) => canvas.toBlob(ok, "image/jpeg", 0.9));
 }
 
+// Where the photo was taken, from its EXIF GPS, rounded to about 1 km: enough to pick the town and the seismic
+// rules, not to point at the site. Used only for this check (the app never stores the coordinates). null if none.
+async function photoGps(file) {
+  try {
+    const v = new DataView(await file.slice(0, 256 * 1024).arrayBuffer());
+    if (v.getUint16(0) !== 0xffd8) return null; // not a JPEG
+    for (let p = 2; p + 4 < v.byteLength;) {
+      const marker = v.getUint16(p), size = v.getUint16(p + 2);
+      if (marker === 0xffe1 && v.getUint32(p + 4) === 0x45786966) return readGps(v, p + 10); // "Exif"
+      if ((marker & 0xff00) !== 0xff00 || marker === 0xffda) return null;
+      p += 2 + size;
+    }
+  } catch { /* unreadable EXIF: no GPS */ }
+  return null;
+}
+function readGps(v, tiff) {
+  const le = v.getUint16(tiff) === 0x4949;
+  const u16 = (o) => v.getUint16(tiff + o, le), u32 = (o) => v.getUint32(tiff + o, le);
+  const tags = (ifd) => {
+    const out = {};
+    for (let i = 0, n = u16(ifd); i < n; i++) { const e = ifd + 2 + i * 12; out[u16(e)] = e; }
+    return out;
+  };
+  const gpsAt = tags(u32(4))[0x8825];
+  if (!gpsAt) return null;
+  const g = tags(u32(gpsAt + 8));
+  const deg = (e) => { const o = u32(e + 8); let d = 0; for (let k = 0; k < 3; k++) d += u32(o + 8 * k) / (u32(o + 8 * k + 4) || 1) / 60 ** k; return d; };
+  const ref = (e) => String.fromCharCode(v.getUint8(tiff + e + 8));
+  if (!g[2] || !g[4]) return null;
+  const lat = deg(g[2]) * (g[1] && ref(g[1]) === "S" ? -1 : 1), lon = deg(g[4]) * (g[3] && ref(g[3]) === "W" ? -1 : 1);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || (lat === 0 && lon === 0) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+  return { lat: Math.round(lat * 100) / 100, lon: Math.round(lon * 100) / 100 };
+}
+
 $("check-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const file = $("photo").files[0];
@@ -85,6 +119,10 @@ $("check-form").addEventListener("submit", async (e) => {
   const parsed = readSchedule();
   if (!parsed) return say($("status"), "The schedule isn't valid JSON. Check the brackets and commas.", "error");
   const schedule = withSizes(parsed);
+  if (!schedule.city && schedule.lat == null) {
+    const gps = await photoGps(file); // the shrunk upload has no EXIF, so read it from the original here
+    if (gps) Object.assign(schedule, gps);
+  }
   $("submit").disabled = true;
   const body = new FormData();
   body.append("photo", await shrink(file), file.name.replace(/\.\w+$/, "") + ".jpg");

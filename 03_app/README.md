@@ -45,7 +45,7 @@ npx wrangler login
 npx wrangler d1 create concrete-evidence-db           # paste the id into wrangler.toml
 npx wrangler r2 bucket create concrete-evidence-photos
 npm run db:remote
-npx wrangler pages deploy
+npm run deploy   # makes lib/cities.gen.js from the city list, then wrangler pages deploy
 npx wrangler pages secret put APP_PASSWORD
 ```
 

@@ -64,3 +64,11 @@ def test_defaults_merged_by_the_caller_dont_override_eurocode_2_tails():
              "ductility": "none"}  # the model server merges DEFAULTS before calling the check
     r = run(capture([h]), sched)  # 55 mm tail on a 135 degree hook: enough under Eurocode 2 (50 mm)
     assert not [c for c in r["checks"] if c["check"] == "hook_tail" and c["status"] == "fail"]
+
+
+def test_photo_gps_names_the_nearest_town_and_country():
+    r = rules_for(lat=41.39, lon=2.17)  # central Barcelona (the nearest listed place is the Eixample district)
+    assert r["place"].startswith("near ") and r["place"].endswith(", ES")
+    assert r["national_annex"] == "ES" and r["agR_g"] is not None
+    assert "41.39" not in r["note"]  # raw coordinates are never part of the stored result
+    assert rules_for(lat=0.0, lon=-30.0)["place"] == "unknown place"  # mid-Atlantic: no town within 50 km

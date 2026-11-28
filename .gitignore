@@ -10,3 +10,4 @@ models/
 .pytest_cache/
 .ruff_cache/
 *.part
+03_app/lib/cities.gen.js
