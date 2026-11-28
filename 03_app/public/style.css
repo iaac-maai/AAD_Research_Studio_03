@@ -12,6 +12,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 var(--font); -webkit-font-smoothing: antialiased; }
 h1, h2, h3 { font-weight: 300; letter-spacing: -0.02em; margin: 0; }
 h1 { font-size: 2rem; line-height: 1.15; }
@@ -141,3 +142,22 @@ summary:hover { color: var(--fg); }
 .login-box { width: 100%; max-width: 380px; }
 .login-box h1 { margin-bottom: .25rem; }
 .error { color: var(--bad); }
+
+/* Bar and tie size menus, colour by angle, measurements */
+.row.even { grid-template-columns: 1fr 1fr; }
+.hint { font-size: 13px; margin: .5rem 0 0; }
+.angle-layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.view-switch { display: flex; gap: .5rem; margin-top: .5rem; flex-wrap: wrap; }
+.view-switch button { min-height: 40px; font: 400 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.view-switch button[aria-pressed=true] { border-color: var(--fg); background: var(--raise); }
+.legend { list-style: none; margin: .5rem 0 0; padding: 0; display: grid; gap: .25rem; font-size: 13px; }
+.legend li { display: flex; align-items: center; gap: .5rem; }
+.swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: .4rem; flex: none; vertical-align: -1px; }
+.table-wrap { overflow-x: auto; margin-top: .5rem; }
+table.measure { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+table.measure th { font: 400 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
+  text-align: left; padding: .4rem .6rem .4rem 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.measure td { padding: .4rem .6rem .4rem 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.measure .num { text-align: right; color: var(--fg); font: inherit; }
+table.measure td[data-state=ok] { color: var(--ok); }
+table.measure td[data-state=bad] { color: var(--bad); }

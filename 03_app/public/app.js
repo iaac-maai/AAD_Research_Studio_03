@@ -21,6 +21,38 @@ const $ = (id) => document.getElementById(id);
 let current = null; // the check on screen
 
 $("schedule").value = JSON.stringify(EXAMPLE_SCHEDULE, null, 2);
+
+// The bar and tie size drop-downs write into the schedule, so the JSON and the menus never disagree
+function readSchedule() {
+  try { return JSON.parse($("schedule").value); } catch { return null; }
+}
+function withSizes(s) {
+  return { ...s, bar_diameter_mm: Number($("bar-size").value), tie_diameter_mm: Number($("tie-size").value) };
+}
+function showSchedule(s) {
+  const dims = Array.isArray(s.column_mm) ? ` · ${s.column_mm.join(" × ")}` : "";
+  $("schedule-summary").textContent =
+    `Bar bending schedule · ${s.element || "Element"}${dims} · Ø${s.bar_diameter_mm} bars · Ø${s.tie_diameter_mm || "?"} ties`;
+}
+for (const id of ["bar-size", "tie-size"]) {
+  $(id).addEventListener("change", () => {
+    const s = readSchedule();
+    if (!s) return; // invalid JSON: the menus still win when the photo is sent
+    const next = withSizes(s);
+    $("schedule").value = JSON.stringify(next, null, 2);
+    showSchedule(next);
+  });
+}
+$("schedule").addEventListener("change", () => {
+  const s = readSchedule();
+  if (!s) return;
+  const pick = (sel, v) => { if ([...$(sel).options].some((o) => Number(o.value) === Number(v))) $(sel).value = String(Number(v)); };
+  pick("bar-size", s.bar_diameter_mm);
+  pick("tie-size", s.tie_diameter_mm);
+  showSchedule(withSizes(s));
+});
+showSchedule(EXAMPLE_SCHEDULE);
+
 try { $("reviewer").value = localStorage.getItem("ce-reviewer") || ""; } catch { /* private window */ }
 
 $("photo").addEventListener("change", () => {
@@ -50,13 +82,13 @@ $("check-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const file = $("photo").files[0];
   if (!file) return say($("status"), "Choose a photo first.", "error");
-  try { JSON.parse($("schedule").value); } catch {
-    return say($("status"), "The schedule isn't valid JSON. Check the brackets and commas.", "error");
-  }
+  const parsed = readSchedule();
+  if (!parsed) return say($("status"), "The schedule isn't valid JSON. Check the brackets and commas.", "error");
+  const schedule = withSizes(parsed);
   $("submit").disabled = true;
   const body = new FormData();
   body.append("photo", await shrink(file), file.name.replace(/\.\w+$/, "") + ".jpg");
-  body.append("schedule", $("schedule").value);
+  body.append("schedule", JSON.stringify(schedule));
   body.append("zone", $("zone").value);
   body.append("face", $("face").value);
 
@@ -107,6 +139,7 @@ async function openCheck(id) {
   $("result-meta").textContent = `${when} · ${current.pieces} pieces found · ${current.faults} fault(s) · ${scale}` +
     (current.signed_off_by ? ` · signed off by ${current.signed_off_by}` : "");
   $("result-photo").src = current.photo_url;
+  showPieces(current);
 
   // The verdict line, as in the design: NOT READY (faults left), READY (none), SIGNED OFF
   const verdict = $("verdict");
@@ -164,6 +197,127 @@ async function openCheck(id) {
   say($("review-status"), "");
   $("result").scrollIntoView({ behavior: "smooth", block: "start" });
 }
+
+// ---- Pieces: colour by angle, and measurements ----------------------------------------------------------------
+// Angles are measured against the main bar direction (the photo may be tilted), from 0 (along) to 90 (across).
+const BANDS = [
+  { key: "along", label: "Along the main bars", range: "0–15°", colour: "#5aa9e6" },
+  { key: "across", label: "Across, like ties", range: "75–90°", colour: "#f2b134" },
+  { key: "diagonal", label: "Diagonal: a bend, a hook or a tilted bar", range: "15–75°", colour: "#e0569b" },
+  { key: "unknown", label: "No direction (outline too small)", range: "", colour: "#9a9a95" },
+];
+const BAND = Object.fromEntries(BANDS.map((b) => [b.key, b]));
+const SIZES = [6, 8, 10, 12, 14, 16, 20, 25, 28, 32, 40];
+const PIECE_LABEL = { bar: "Bar", tie: "Tie", stirrup: "Tie", hook_90: "Hook 90°", hook_135: "Hook 135°" };
+const SVG = "http://www.w3.org/2000/svg";
+
+// The main direction: the average of the bars' angles, on the doubled angle so 179° and 1° agree
+function mainAngle(dets) {
+  const bars = dets.filter((d) => d.class === "bar" && d.angle_deg != null);
+  if (!bars.length) return 90; // no bars: assume an upright column photo
+  let x = 0, y = 0;
+  for (const b of bars) { const r = (b.angle_deg * Math.PI) / 90; x += Math.cos(r); y += Math.sin(r); }
+  return ((Math.atan2(y, x) * 90) / Math.PI + 180) % 180;
+}
+const gap = (a, b) => { const g = Math.abs(a - b) % 180; return Math.min(g, 180 - g); };
+function band(d, main) {
+  // a blob about as wide as it is long has no meaningful direction
+  if (d.angle_deg == null || !d.length_px || d.length_px < 1.5 * (d.width_px || 0)) return "unknown";
+  const g = gap(d.angle_deg, main);
+  return g <= 15 ? "along" : g >= 75 ? "across" : "diagonal";
+}
+
+function showPieces(c) {
+  const dets = c.detections || [];
+  const mm = c.mm_per_px || c.check?.scale?.mm_per_px || null; // without markers the scale is only in check.scale
+  const main = mainAngle(dets);
+  const s = c.schedule || {};
+  const tol = Number(s.diameter_tol_mm || 4);
+  const rows = dets.map((d) => ({ ...d, band: band(d, main), rel: d.angle_deg == null ? null : gap(d.angle_deg, main) }));
+
+  // Overlay: one outline per piece, filled in its band's colour, drawn in the photo's own pixels
+  const layer = $("angle-layer");
+  const img = $("result-photo");
+  const draw = () => {
+    layer.setAttribute("viewBox", `0 0 ${img.naturalWidth || 1} ${img.naturalHeight || 1}`);
+    layer.replaceChildren(...rows.flatMap((d) => {
+      const colour = BAND[d.band].colour;
+      const shapes = [];
+      if (d.polygon?.length > 2) {
+        const p = document.createElementNS(SVG, "polygon");
+        p.setAttribute("points", d.polygon.map(([x, y]) => `${x},${y}`).join(" "));
+        p.setAttribute("fill", colour); p.setAttribute("fill-opacity", "0.45");
+        p.setAttribute("stroke", colour); p.setAttribute("stroke-width", "3"); p.setAttribute("vector-effect", "non-scaling-stroke");
+        shapes.push(p);
+      } else if (d.centre_px && d.size_px) {
+        const r = document.createElementNS(SVG, "rect");
+        const [cx, cy] = d.centre_px, [w, h] = d.size_px;
+        Object.entries({ x: cx - w / 2, y: cy - h / 2, width: w, height: h, fill: "none", stroke: colour, "stroke-width": 3, "vector-effect": "non-scaling-stroke" })
+          .forEach(([k, v]) => r.setAttribute(k, v));
+        shapes.push(r);
+      }
+      return shapes;
+    }));
+  };
+  if (img.complete && img.naturalWidth) draw(); else img.addEventListener("load", draw, { once: true });
+
+  const counts = Object.fromEntries(BANDS.map((b) => [b.key, rows.filter((r) => r.band === b.key).length]));
+  $("angle-legend").replaceChildren(...BANDS.filter((b) => counts[b.key]).map((b) => {
+    const li = document.createElement("li");
+    const sw = Object.assign(document.createElement("span"), { className: "swatch" }); sw.style.background = b.colour;
+    li.append(sw, Object.assign(document.createElement("span"), { textContent: `${b.label}${b.range ? ` (${b.range})` : ""}` }),
+      Object.assign(document.createElement("span"), { className: "muted", textContent: ` · ${counts[b.key]}` }));
+    return li;
+  }));
+  setView(currentView);
+
+  // Measurements: length and width in mm, and each width against the size chosen in the menus
+  const markers = c.check?.scale?.source === "markers";
+  $("measure-note").textContent = !dets.length ? "No pieces found in this photo."
+    : !mm ? "No scale in this photo, so lengths are in pixels."
+      : markers ? `Scale from the markers: ${mm.toFixed(3)} mm per pixel. Widths are a real measurement of each bar's size.`
+        : `No markers seen: the scale (${mm.toFixed(3)} mm per pixel) comes from the bar size chosen, so widths only show which bars differ from the others.`;
+  const fmt = (px) => (px == null ? "—" : mm ? `${Math.round(px * mm)} mm` : `${Math.round(px)} px`);
+  $("measure-rows").replaceChildren(...rows.map((d) => {
+    const tr = document.createElement("tr");
+    const isTie = d.class === "tie" || d.class === "stirrup";
+    const isHook = String(d.class).startsWith("hook");
+    const want = isTie ? Number(s.tie_diameter_mm || 8) : Number(s.bar_diameter_mm || 16);
+    let verdict = "—", state = "";
+    if (mm && d.width_px && !isHook) {
+      const w = d.width_px * mm;
+      const nearest = SIZES.reduce((a, b) => (Math.abs(b - w) < Math.abs(a - w) ? b : a));
+      if (Math.abs(w - want) <= tol) { verdict = `Matches Ø${want}`; state = "ok"; }
+      else { verdict = `Looks like Ø${nearest}, not Ø${want}`; state = "bad"; }
+    }
+    const dir = document.createElement("td");
+    const sw = Object.assign(document.createElement("span"), { className: "swatch" }); sw.style.background = BAND[d.band].colour;
+    dir.append(sw, document.createTextNode(BAND[d.band].label.split(":")[0]));
+    const v = Object.assign(document.createElement("td"), { textContent: verdict }); v.dataset.state = state;
+    tr.append(
+      Object.assign(document.createElement("td"), { textContent: d.id }),
+      Object.assign(document.createElement("td"), { textContent: PIECE_LABEL[d.class] || d.class }),
+      dir,
+      Object.assign(document.createElement("td"), { className: "num", textContent: d.rel == null ? "—" : `${Math.round(d.rel)}°` }),
+      Object.assign(document.createElement("td"), { className: "num", textContent: fmt(d.length_px) }),
+      Object.assign(document.createElement("td"), { className: "num", textContent: isHook ? "—" : fmt(d.width_px) }),
+      v,
+    );
+    return tr;
+  }));
+}
+
+let currentView = "faults";
+function setView(view) {
+  currentView = view;
+  const angles = view === "angles";
+  $("angle-layer").toggleAttribute("hidden", !angles); // an <svg> has no .hidden property
+  $("angle-legend").hidden = !angles;
+  $("view-faults").setAttribute("aria-pressed", String(!angles));
+  $("view-angles").setAttribute("aria-pressed", String(angles));
+}
+$("view-faults").addEventListener("click", () => setView("faults"));
+$("view-angles").addEventListener("click", () => setView("angles"));
 
 async function sendReview(signOff) {
   if (!current) return;

@@ -39,8 +39,38 @@
           </div>
         </div>
 
+        <div class="row even">
+          <div>
+            <label for="bar-size">Main bar size</label>
+            <select id="bar-size" name="bar_size">
+              <option value="8">Ø8 mm</option>
+              <option value="10">Ø10 mm</option>
+              <option value="12">Ø12 mm</option>
+              <option value="14">Ø14 mm</option>
+              <option value="16" selected>Ø16 mm</option>
+              <option value="20">Ø20 mm</option>
+              <option value="25">Ø25 mm</option>
+              <option value="28">Ø28 mm</option>
+              <option value="32">Ø32 mm</option>
+              <option value="40">Ø40 mm</option>
+            </select>
+          </div>
+          <div>
+            <label for="tie-size">Tie size</label>
+            <select id="tie-size" name="tie_size">
+              <option value="6">Ø6 mm</option>
+              <option value="8" selected>Ø8 mm</option>
+              <option value="10">Ø10 mm</option>
+              <option value="12">Ø12 mm</option>
+              <option value="14">Ø14 mm</option>
+              <option value="16">Ø16 mm</option>
+            </select>
+          </div>
+        </div>
+        <p class="muted hint">The bar size sets the scale when the markers aren't in view, and the size every bar is checked against.</p>
+
         <details>
-          <summary>Bar bending schedule · Column C1 · 400 × 400 · Ø16 bars · Ø8 ties</summary>
+          <summary id="schedule-summary">Bar bending schedule · Column C1 · 400 × 400 · Ø16 bars · Ø8 ties</summary>
           <label for="schedule">Schedule as JSON</label>
           <textarea id="schedule" name="schedule" rows="14" spellcheck="false"></textarea>
         </details>
@@ -58,12 +88,31 @@
       </div>
       <div class="viewer">
         <img id="result-photo" class="photo" alt="The checked photo: outlines named in a fault are marked, the rest are fine">
+        <svg id="angle-layer" class="angle-layer" aria-hidden="true" hidden></svg>
         <span class="tag">● Checked photo · faces blurred</span>
       </div>
+      <div class="view-switch" role="group" aria-label="How to colour the pieces">
+        <button type="button" class="quiet" id="view-faults" aria-pressed="true">Faults</button>
+        <button type="button" class="quiet" id="view-angles" aria-pressed="false">Colour by angle</button>
+      </div>
+      <ul id="angle-legend" class="legend" hidden></ul>
       <p id="result-meta" class="muted"></p>
       <p id="headline" class="headline"></p>
       <h3>To fix</h3>
       <ol id="fixes" class="fixes"></ol>
+
+      <h3>Measurements</h3>
+      <p id="measure-note" class="muted hint"></p>
+      <div class="table-wrap">
+        <table class="measure">
+          <thead><tr>
+            <th scope="col">#</th><th scope="col">Piece</th><th scope="col">Direction</th>
+            <th scope="col" class="num">Angle</th><th scope="col" class="num">Length</th>
+            <th scope="col" class="num">Width (≈ Ø)</th><th scope="col">Against the size chosen</th>
+          </tr></thead>
+          <tbody id="measure-rows"></tbody>
+        </table>
+      </div>
 
       <h3>Review each fault</h3>
       <p class="muted" style="font-size:13px; padding-top:.5rem">The model only suggests. Confirm what you see on site,
