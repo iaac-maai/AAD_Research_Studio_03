@@ -62,15 +62,23 @@ def _detector():
     return cv2.FaceDetectorYN.create(str(path), "", (320, 320), 0.6, 0.3, 5000)
 
 
+DETECT_MAX_SIDE = 1280  # YuNet's memory grows with the input: a 2400 x 1800 photo alone takes ~340 MB
+
+
 def find_faces(frame: np.ndarray, min_size: int = 12) -> list[tuple[int, int, int, int]]:
-    """Return face boxes (x, y, w, h) in pixels."""
+    """Return face boxes (x, y, w, h) in pixels of `frame`. Large photos are searched at
+    DETECT_MAX_SIDE so the free 512 MB server keeps its memory; the boxes are scaled back."""
     img = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR) if frame.ndim == 2 else frame
+    s = min(1.0, DETECT_MAX_SIDE / max(img.shape[:2]))
+    if s < 1.0:
+        img = cv2.resize(img, (round(img.shape[1] * s), round(img.shape[0] * s)), interpolation=cv2.INTER_AREA)
     det = _detector()
     det.setInputSize((img.shape[1], img.shape[0]))
     _, faces = det.detect(img)
     if faces is None:
         return []
-    return [(int(f[0]), int(f[1]), int(f[2]), int(f[3])) for f in faces if min(f[2], f[3]) >= min_size]
+    boxes = [tuple(int(round(v / s)) for v in f[:4]) for f in faces]
+    return [b for b in boxes if min(b[2], b[3]) >= min_size]
 
 
 def blur_boxes(frame: np.ndarray, boxes, pad: float = 0.25) -> np.ndarray:
