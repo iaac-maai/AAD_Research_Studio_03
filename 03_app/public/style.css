@@ -92,6 +92,8 @@ summary:hover { color: var(--fg); }
 .verdict[data-state=pass] { color: var(--ok); }
 .verdict[data-state=signed_off] { color: var(--ok); }
 .headline { font-size: 20px; font-weight: 400; padding: 1rem 0 .5rem; border-bottom: 1px solid var(--line); }
+.accuracy { font-size: 13px; line-height: 1.5; color: var(--muted); padding: .75rem 0; border-bottom: 1px solid var(--line); }
+.accuracy strong { color: var(--fg); font-weight: 500; }
 #result-meta { font-size: 13px; padding-top: .5rem; }
 
 .badge { font: 400 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: .1rem .45rem;

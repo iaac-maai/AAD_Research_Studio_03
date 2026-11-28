@@ -5,6 +5,7 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
+from . import axis
 from .frames import change, thumb
 
 
@@ -52,15 +53,21 @@ def record(track_id, cls_name: str, conf: float, xyxy, mm_per_px: float | None, 
          "centre_px": [round((x1 + x2) / 2, 1), round((y1 + y2) / 2, 1)],
          "size_px": [round(x2 - x1, 1), round(y2 - y1, 1)]}
     s = shape(polygon) if polygon is not None else None
+    a = axis.measure(polygon) if s else None
     if s:
         d.update(s)
         d["polygon"] = [[round(float(x)), round(float(y))] for x, y in np.asarray(polygon).reshape(-1, 2)]
+    if a:
+        d.update(a)  # axis polyline, its segments, bends and the bar's thickness (axis.py)
     if mm_per_px:
         d["centre_mm"] = [round(v * mm_per_px, 1) for v in d["centre_px"]]
         d["size_mm"] = [round(v * mm_per_px, 1) for v in d["size_px"]]
         if s:
             d["length_mm"] = round(s["length_px"] * mm_per_px, 1)
             d["width_mm"] = round(s["width_px"] * mm_per_px, 1)
+        if a:
+            d["segments_mm"] = [round(v * mm_per_px, 1) for v in a["segments_px"]]
+            d["thickness_mm"] = round(a["thickness_px"] * mm_per_px, 1)
     return d
 
 

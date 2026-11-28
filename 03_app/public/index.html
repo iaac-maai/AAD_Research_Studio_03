@@ -45,9 +45,9 @@
             <select id="bar-size" name="bar_size">
               <option value="8">Ø8 mm</option>
               <option value="10">Ø10 mm</option>
-              <option value="12">Ø12 mm</option>
+              <option value="12" selected>Ø12 mm</option>
               <option value="14">Ø14 mm</option>
-              <option value="16" selected>Ø16 mm</option>
+              <option value="16">Ø16 mm</option>
               <option value="20">Ø20 mm</option>
               <option value="25">Ø25 mm</option>
               <option value="28">Ø28 mm</option>
@@ -67,10 +67,10 @@
             </select>
           </div>
         </div>
-        <p class="muted hint">The bar size sets the scale when the markers aren't in view, and the size every bar is checked against.</p>
+        <p class="muted hint">Ø12 unless you change it. The bar size sets the scale when the markers aren't in view, and the size every bar is checked against.</p>
 
         <details>
-          <summary id="schedule-summary">Bar bending schedule · Column C1 · 400 × 400 · Ø16 bars · Ø8 ties</summary>
+          <summary id="schedule-summary">Bar bending schedule · Column C1 · 400 × 400 · Ø12 bars · Ø8 ties</summary>
           <label for="schedule">Schedule as JSON</label>
           <textarea id="schedule" name="schedule" rows="14" spellcheck="false"></textarea>
         </details>
@@ -98,6 +98,10 @@
       <ul id="angle-legend" class="legend" hidden></ul>
       <p id="result-meta" class="muted"></p>
       <p id="headline" class="headline"></p>
+      <p class="accuracy" id="accuracy"><strong>How sure is this?</strong> On 63 real site photos it never saw in training,
+        the model found about 7 in 10 bars, and about 8 in 10 of the outlines it drew were real bars.
+        It is not yet reliable on ties, stirrups and hooks: it can call a tie a bar, or miss a hook. Lengths and sizes
+        are measured from the outlines, so they are approximate. Confirm every fault on site before the pour.</p>
       <h3>To fix</h3>
       <ol id="fixes" class="fixes"></ol>
 
@@ -108,7 +112,8 @@
           <thead><tr>
             <th scope="col">#</th><th scope="col">Piece</th><th scope="col">Direction</th>
             <th scope="col" class="num">Angle</th><th scope="col" class="num">Length</th>
-            <th scope="col" class="num">Width (≈ Ø)</th><th scope="col">Against the size chosen</th>
+            <th scope="col" class="num">Width (≈ Ø)</th><th scope="col">Segments</th><th scope="col" class="num">Bends</th>
+            <th scope="col">Against the size chosen</th>
           </tr></thead>
           <tbody id="measure-rows"></tbody>
         </table>
