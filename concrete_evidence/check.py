@@ -61,7 +61,9 @@ def scale(capture: dict, schedule: dict) -> tuple[float | None, str]:
     """mm per pixel and where it came from: 'markers', 'diameter' or 'none'."""
     if capture.get("mm_per_px"):
         return float(capture["mm_per_px"]), "markers"
-    widths = [d["width_px"] for d in capture.get("detections", []) if d.get("class") == BAR and d.get("width_px")]
+    # across the axis when the outline has one (the width the page shows), else the box's short side
+    widths = [d.get("thickness_px") or d["width_px"] for d in capture.get("detections", [])
+              if d.get("class") == BAR and (d.get("thickness_px") or d.get("width_px"))]
     if widths:
         return float(schedule["bar_diameter_mm"]) / median(widths), "diameter"
     return None, "none"
@@ -72,11 +74,43 @@ def _item(check, status, detail, measured=None, expected=None, track_ids=()):
             "expected": expected, "track_ids": [t for t in track_ids if t is not None]}
 
 
-def check_count(bars, s):
+def _layer(bars, s):
+    """The bars running in the main direction (one layer of a mat or face); all bars when there are no outlines."""
+    angles = [b["angle_deg"] for b in bars if b.get("angle_deg") is not None]
+    if len(angles) < 2:
+        return list(bars)
+    main = _main_angle(angles)
+    return [b for b in bars if b.get("angle_deg") is None or _angle_gap(b["angle_deg"], main) <= s["parallel_deg"]]
+
+
+def _one_per_position(bars, laps):
+    """Bars lapped side by side stand in one bar position: keep the longest of each lapped group (the bar that
+    runs on), drop the others. Groups chain (a bar lapped on both sides), so they are joined first."""
+    group = {b["track_id"]: b["track_id"] for b in bars}
+
+    def root(i):
+        while group[i] != i:
+            i = group[i]
+        return i
+
+    for a, b in laps:
+        if a in group and b in group:
+            group[root(a)] = root(b)
+    best = {}
+    for b in bars:
+        r = root(b["track_id"])
+        if r not in best or (b.get("length_px") or 0) > (best[r].get("length_px") or 0):
+            best[r] = b
+    return list(best.values())
+
+
+def check_count(bars, s, laps=frozenset()):
+    """Bars in the main direction (bars running across, e.g. the other way of a slab mat, aren't counted).
+    Two bars lapped side by side stand in one bar position, so each lap counts once."""
     n_exp = s.get("bar_count")
     if not n_exp:
         return []
-    n = len(bars)
+    n = len(_one_per_position(_layer(bars, s), laps))
     if n == n_exp:
         return [_item("bar_count", "pass", f"{n} bars, as scheduled", n, n_exp)]
     word = "missing" if n < n_exp else "extra"
@@ -99,7 +133,7 @@ def check_diameter(bars, s, mm, source):
 
 def check_spacing(bars, s, mm, laps=frozenset()):
     """Gaps between neighbouring bars across the layer. `laps` are pairs of ids lapped side by side
-    (check_laps): they stand in one bar position, so their small gap isn't a spacing fault."""
+    (check_laps): they stand in one bar position (the bar that runs on), so they give one gap, not two."""
     sp = s.get("bar_spacing_mm")
     if not sp or len(bars) < 2:
         return []
@@ -107,8 +141,8 @@ def check_spacing(bars, s, mm, laps=frozenset()):
     if len(angles) < 2:
         return [_item("spacing", "unknown", "no mask outlines in this capture, so spacing can't be measured")]
     main = _main_angle(angles)
-    layer = [b for b in bars
-             if b.get("angle_deg") is not None and _angle_gap(b["angle_deg"], main) <= s["parallel_deg"]]
+    layer = _one_per_position([b for b in bars if b.get("angle_deg") is not None
+                               and _angle_gap(b["angle_deg"], main) <= s["parallel_deg"]], laps)
     # distance across the bars: project each bar's centre onto the direction normal to them
     nx, ny = -np.sin(np.radians(main)), np.cos(np.radians(main))
     if nx < -1e-9 or (abs(nx) <= 1e-9 and ny < 0):  # read left to right (top to bottom for flat bars)
@@ -117,7 +151,7 @@ def check_spacing(bars, s, mm, laps=frozenset()):
     tol, out = float(s["spacing_tol_mm"]), []
     for (p0, t0), (p1, t1) in zip(pos, pos[1:], strict=False):
         gap = round(float(p1 - p0), 1)
-        if abs(gap - sp) <= tol or tuple(sorted((t0, t1), key=str)) in laps:
+        if abs(gap - sp) <= tol:
             continue
         if gap > 1.5 * sp:
             detail = f"gap of {gap} mm: a bar is probably missing or shifted here"
@@ -291,8 +325,12 @@ def check_laps(bars, s, mm):
                 continue
             ta, tb = (0.0, float(la)), tuple(sorted((float(np.dot(b0 - a0, ua)), float(np.dot(b1 - a0, ua)))))
             overlap = (min(ta[1], tb[1]) - max(ta[0], tb[0])) * mm
-            inside = (tb[0] >= ta[0] and tb[1] <= ta[1]) or (ta[0] >= tb[0] and ta[1] <= tb[1])
-            if overlap <= 0 or inside:  # not touching along the bar, or one runs the whole length of the other
+            # a lap shows as staggered ends: at least one bar ends beside the other. A starter usually starts at
+            # the slab surface with its column bar, so only its top end is staggered; that is still a lap.
+            # Both ends level (often both cut by the photo's edge) shows no lap: two bars, too close.
+            m = 2 * phi
+            staggered = abs(ta[0] - tb[0]) * mm > m or abs(ta[1] - tb[1]) * mm > m
+            if overlap <= 0 or not staggered:
                 continue
             ov = round(overlap, 1)
             ids = sorted((a["track_id"], b["track_id"]), key=str)
@@ -331,7 +369,7 @@ def run(capture: dict, schedule: dict, zone: str | None = None, face: str | None
     else:
         laps = check_laps(bars, s, mm)
         pairs = frozenset(tuple(i["track_ids"]) for i in laps)
-        items += (check_count(bars, s) + check_diameter(bars, s, mm, source) + check_spacing(bars, s, mm, pairs)
+        items += (check_count(bars, s, pairs) + check_diameter(bars, s, mm, source) + check_spacing(bars, s, mm, pairs)
                   + check_ties(dets, bars, s, mm, limits, zone) + check_hooks(dets, s, mm, limits) + laps)
     faults = [i for i in items if i["status"] == "fail"]
     result = {"element": s.get("element", ""), "face": face, "zone": zone, "place": place,

@@ -67,7 +67,7 @@ All three are in `tests/test_ties.py`.
 
 ## Location-based rules (in the code)
 
-The schedule gives only the site city (or the photo's GPS). `concrete_evidence/location.py` finds the country and coordinates (GeoNames city list, CC BY 4.0); in Spain it reads ag,R from the annex grid (`concrete_evidence/reference/es_seismic_grid.csv`, 4,697 points taken from table AN.5): under 0.04 g Eurocode 2 only, otherwise Eurocode 8 (DCM unless the engineer chooses), with the Spanish values above. Outside Spain: European recommended values, said in the result. A place outside the grid (e.g. Madrid) gets Eurocode 8 (DCM) and a note to ask the engineer. The engineer's own choice of ductility always wins.
+The schedule gives only the site city (or the photo's GPS). `concrete_evidence/location.py` finds the country and coordinates (GeoNames city list, CC BY 4.0); in Spain it reads ag,R from the annex grid (`concrete_evidence/reference/es_seismic_grid.csv`, 4,697 points taken from table AN.5): under 0.04 g Eurocode 2 only, otherwise Eurocode 8 (DCM unless the engineer chooses), with the Spanish values above. Outside Spain: European recommended values, said in the result. A Spanish place missing from the table (central Spain, e.g. Madrid, Toledo, Valladolid) is very low seismicity: the table leaves those areas out, so Eurocode 2 only, with a note to ask the engineer if unsure (confirmed by Akanksha, 28 Nov). The engineer's own choice of ductility always wins.
 
 ## Still to verify (needs a person or a document)
 

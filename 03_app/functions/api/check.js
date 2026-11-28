@@ -1,9 +1,10 @@
 // POST /api/check: one photo of one column face is checked.
 // Form fields: photo (a JPEG or PNG file), schedule (the bar bending schedule as JSON text), zone ("end" or
-// "middle"), face (e.g. "A").
+// "middle"), face (e.g. "A"). The schedule is checked against live/schedule.schema.json first (400 if it doesn't fit).
 // 1. send it to the model server, 2. store the checked photo (faces blurred) and the full result (R2, or D1 without R2),
 // 3. store one row in D1, 4. answer the page. The original upload is never stored.
 
+import { validateSchedule } from "../../lib/schedule.js";
 import { putFile } from "../../lib/storage.js";
 
 const MAX_BYTES = 8 * 1024 * 1024;
@@ -25,6 +26,13 @@ export async function onRequestPost({ request, env }) {
   } catch {
     return Response.json({ error: "The bar bending schedule isn't valid JSON. Check the brackets and commas." }, { status: 400 });
   }
+  const problems = validateSchedule(schedule);
+  if (problems.length) {
+    return Response.json({ error: `The bar bending schedule needs fixing: ${problems.slice(0, 3).join("; ")}.`, problems },
+      { status: 400 });
+  }
+  // The photo's GPS only picks the rules (the result names the nearest town): the coordinates are never stored
+  const { lat: _lat, lon: _lon, ...storedSchedule } = schedule;
   const zone = ZONES.includes(form.get("zone")) ? form.get("zone") : "end";
   const face = String(form.get("face") || "").slice(0, 20);
   const bytes = new Uint8Array(await file.arrayBuffer());
@@ -61,7 +69,7 @@ export async function onRequestPost({ request, env }) {
   ).bind(
     id, createdAt, check.element || schedule.element || null, face || null, zone, file.name || null, photoKey, resultKey,
     result.model?.weights || null, (result.detections || []).length, Number(check.faults || 0),
-    check.scale?.source || null, JSON.stringify(schedule), JSON.stringify(check),
+    check.scale?.source || null, JSON.stringify(storedSchedule), JSON.stringify(check),
   ).run();
 
   // 4. Answer the page

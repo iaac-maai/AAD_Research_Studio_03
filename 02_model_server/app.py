@@ -31,7 +31,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from concrete_evidence import privacy  # noqa: E402
-from concrete_evidence.check import DEFAULTS, summary  # noqa: E402
+from concrete_evidence.check import summary  # noqa: E402
 from concrete_evidence.infer import analyse  # noqa: E402
 
 EXAMPLE_SCHEDULE = (ROOT / "live" / "schedule_example.json").read_text()
@@ -82,7 +82,7 @@ def decode_image(image_b64: str) -> np.ndarray:
 
 
 def run(img: np.ndarray, schedule_json: str, zone: str, face: str) -> dict:
-    schedule = {**DEFAULTS, **json.loads(schedule_json or "{}")}
+    schedule = json.loads(schedule_json or "{}")  # check.run fills in the defaults itself
     if not schedule.get("bar_diameter_mm"):
         raise ValueError("the schedule needs bar_diameter_mm")
     out = analyse(img, schedule, MODEL, depth=DEPTH, zone=zone or None, face=face or None, rename=RENAME)
