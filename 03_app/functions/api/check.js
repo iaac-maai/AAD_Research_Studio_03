@@ -1,7 +1,7 @@
 // POST /api/check: one photo of one column face is checked.
 // Form fields: photo (a JPEG or PNG file), schedule (the bar bending schedule as JSON text), zone ("end" or
 // "middle"), face (e.g. "A"). The schedule is checked against live/schedule.schema.json first (400 if it doesn't fit).
-// 1. send it to the model server, 2. store the checked photo (faces blurred) and the full result (R2, or D1 without R2),
+// 1. send it to the model server, 2. store the checked photo and the full result (R2, or D1 without R2),
 // 3. store one row in D1, 4. answer the page. The original upload is never stored.
 
 import { validateSchedule } from "../../lib/schedule.js";
@@ -75,7 +75,7 @@ export async function onRequestPost({ request, env }) {
   // 4. Answer the page
   return Response.json({
     id, created_at: createdAt, photo_url: `/api/photos/${id}`, check, counts: result.counts,
-    markers_seen: result.markers_seen, mm_per_px: result.mm_per_px, faces_blurred: result.faces_blurred,
+    markers_seen: result.markers_seen, mm_per_px: result.mm_per_px,
     model: result.model, review_status: "pending",
   });
 }

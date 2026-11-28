@@ -41,12 +41,8 @@ class ExtractResult:
 
 
 def extract(video: str | Path, out_dir: str | Path, every_s: float = 0.5, min_sharp: float = 80.0,
-            min_change: float = 6.0, max_side: int = 1600, blur_faces: bool = True) -> ExtractResult:
-    """Save one frame every `every_s` seconds, minus blurry ones and near-duplicates.
-
-    Faces are blurred before saving unless blur_faces=False (see privacy.py).
-    """
-    from .privacy import blur_faces as _blur
+            min_change: float = 6.0, max_side: int = 1600) -> ExtractResult:
+    """Save one frame every `every_s` seconds, minus blurry ones and near-duplicates."""
 
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -75,8 +71,6 @@ def extract(video: str | Path, out_dir: str | Path, every_s: float = 0.5, min_sh
                 res.duplicates += 1
                 continue
             last = t
-            if blur_faces:
-                frame, _ = _blur(frame)
             cv2.imwrite(str(out / f"{stem}_{idx:06d}.jpg"), frame, [cv2.IMWRITE_JPEG_QUALITY, 92])
             res.kept += 1
     finally:

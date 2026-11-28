@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS checks (
   face           TEXT,                       -- which face of the column, e.g. "A"
   zone           TEXT,                       -- "end" or "middle"
   file_name      TEXT,                       -- the uploaded file's name
-  photo_key      TEXT NOT NULL,              -- R2: the checked photo (faces blurred, outlines drawn)
+  photo_key      TEXT NOT NULL,              -- R2: the checked photo (outlines drawn)
   result_key     TEXT NOT NULL,              -- R2: the full result JSON (every piece and outline)
   model          TEXT,                       -- which model weights answered
   pieces         INTEGER,                    -- how many pieces were found
