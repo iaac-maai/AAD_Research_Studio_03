@@ -65,7 +65,7 @@ def from_model(weights, img, conf):
     out = []
     if r.masks is None:
         return out
-    for c, poly in zip(r.boxes.cls.int().tolist(), r.masks.xy):
+    for c, poly in zip(r.boxes.cls.int().tolist(), r.masks.xy, strict=True):
         name = RENAME.get(r.names[c], r.names[c])
         if len(poly) >= 3:
             out.append((name, poly.round().astype(np.int32)))
@@ -142,7 +142,7 @@ def merge_into_bars(pieces, dirs, h, w):
     """Pieces whose lines cross the centre row/column at about the same point are one bar."""
     bars = []
     for g in sorted(set(dirs)):
-        grp = [p for p, d in zip(pieces, dirs) if d == g]
+        grp = [p for p, d in zip(pieces, dirs, strict=True) if d == g]
         vert = np.mean([abs(p["v"][1]) for p in grp]) > np.mean([abs(p["v"][0]) for p in grp])
         ref = h / 2 if vert else w / 2
         for p in grp:
@@ -164,7 +164,8 @@ def merge_into_bars(pieces, dirs, h, w):
             for p in c:
                 m |= p["m"]
             zs = [p["z"] for p in c if p["z"] is not None]
-            bars.append(dict(dir=int(g), m=m, vert=bool(vert), ref=float(ref), pieces=len(c), v=tuple(map(float, c[0]["v"])),
+            bars.append(dict(dir=int(g), m=m, vert=bool(vert), ref=float(ref), pieces=len(c),
+                             v=tuple(map(float, c[0]["v"])),
                              icpt=float(np.mean([p["icpt"] for p in c])),
                              w=float(np.median([p["w"] for p in c])), z=float(np.median(zs)) if zs else None))
     return bars
@@ -179,8 +180,8 @@ def split_layers(bars, min_gap=0.12):
     if abs(cen[0, 0] - cen[1, 0]) < min_gap or min(np.bincount(lab, minlength=2)) < 2:
         return False
     near = int(np.argmax(cen.ravel()))
-    for b, l in zip(bars, lab):
-        b["layer"] = "top" if l == near else "bottom"  # nearest to the camera = top layer
+    for b, k in zip(bars, lab, strict=True):
+        b["layer"] = "top" if k == near else "bottom"  # nearest to the camera = top layer
     return True
 
 
@@ -189,7 +190,7 @@ def spacings(bars, diam, target, tol):
     keys = sorted({(b["dir"], b.get("layer", "all")) for b in bars})
     for d, layer in keys:
         G = sorted([b for b in bars if b["dir"] == d and b.get("layer", "all") == layer], key=lambda b: b["icpt"])
-        for b0, b1 in zip(G, G[1:]):
+        for b0, b1 in zip(G, G[1:], strict=False):
             px = b1["icpt"] - b0["icpt"]
             mm = px * diam / max((b0["w"] + b1["w"]) / 2, 1e-6)  # local scale from the two bars' width
             out.append(dict(dir=d, layer=layer, a=b0, b=b1, px=float(px), mm=float(mm)))
@@ -252,7 +253,7 @@ def stirrup_spacing(stirrups, bars, diam):
         axis = np.array([0, 1.0])
     S = sorted(stirrups, key=lambda s: np.dot(s["c"], axis))
     out = []
-    for s0, s1 in zip(S, S[1:]):
+    for s0, s1 in zip(S, S[1:], strict=False):
         px = float(np.dot(np.subtract(s1["c"], s0["c"]), axis))
         out.append(dict(a=s0, b=s1, px=px, mm=float(px * diam / ((s0["w"] + s1["w"]) / 2))))
     return out
@@ -283,7 +284,8 @@ def draw(img, bars, sp, stirrups, ssp, layered, diam):
         p0, p1 = tuple(int(t) for t in p0), tuple(int(t) for t in p1)
         cv2.arrowedLine(a, p0, p1, (0, 255, 255), 2, tipLength=.15)
         cv2.arrowedLine(a, p1, p0, (0, 255, 255), 2, tipLength=.15)
-        label(a, f"{s['mm']:.0f}", ((p0[0] + p1[0]) // 2 - 12, (p0[1] + p1[1]) // 2 - 6), bg=OK if s["ok"] else BAD, s=.45)
+        mid = ((p0[0] + p1[0]) // 2 - 12, (p0[1] + p1[1]) // 2 - 6)
+        label(a, f"{s['mm']:.0f}", mid, bg=OK if s["ok"] else BAD, s=.45)
     for s in ssp:
         p0 = tuple(int(t) for t in s["a"]["c"])
         p1 = tuple(int(t) for t in s["b"]["c"])
@@ -317,8 +319,9 @@ def report(path, img, diam, target, tol, bars, sp, stirrups, ssp, layered, sourc
                        corner_deg=[round(c["deg"]) for c in s["corners"]])
                   for s in stirrups],
         stirrup_spacing_mm=[round(s["mm"]) for s in ssp],
-        stirrup_spacing_note="a value under 3 diameters means two stirrups at the same height (double stirrup or a "
-                             "second cage in the photo), not a spacing" if any(s["mm"] < 3 * diam for s in ssp) else None,
+        stirrup_spacing_note=("a value under 3 diameters means two stirrups at the same height (double stirrup "
+                              "or a second cage in the photo), not a spacing")
+        if any(s["mm"] < 3 * diam for s in ssp) else None,
         checks_to_review=sum(not s["ok"] for s in sp),
         notes=["scale assumes all bars have the given diameter",
                "spacing measured on the centre row/column of the photo",
