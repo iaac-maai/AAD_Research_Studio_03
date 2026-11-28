@@ -24,7 +24,5 @@ jobs:
       - run: python -m pip install -r requirements-dev.txt
       - name: Lint
         run: ruff check .
-      - name: Face model (for the privacy test)
-        run: python -m concrete_evidence.privacy --fetch
       - name: Tests
         run: python -m pytest -rs

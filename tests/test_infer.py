@@ -57,7 +57,7 @@ def photo():
 
 
 def test_one_photo_end_to_end_without_markers_uses_bar_width():
-    out = analyse(photo(), COLUMN, StandIn([150, 250, 480, 580]), face="A", blur=False)
+    out = analyse(photo(), COLUMN, StandIn([150, 250, 480, 580]), face="A")
     chk = out["check"]
     assert chk["scale"]["source"] == "diameter" and out["counts"] == {"bar": 4, "tie": 4}
     tie = [c for c in chk["checks"] if c["check"] == "tie_spacing"]
@@ -66,12 +66,3 @@ def test_one_photo_end_to_end_without_markers_uses_bar_width():
     assert out["annotated"].shape == (800, 700, 3)
     assert (out["annotated"] == RED).all(axis=-1).any()  # the faulty ties are drawn red
     assert all(len(d["polygon"]) == 4 for d in out["detections"])
-
-
-def test_depth_filter_runs_before_the_model():
-    model = StandIn([150, 250])
-    near = np.zeros((800, 700), np.float32)
-    near[100:700, 50:600] = 1.0
-    out = analyse(photo(), COLUMN, model, depth=lambda _: near, blur=False)
-    assert out["depth"]["kept"] < 1
-    assert (model.seen[10, 10] == 114).all()  # the model got the greyed photo

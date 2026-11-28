@@ -18,11 +18,9 @@ py -3.13 -m venv .venv
 .venv\Scripts\activate                       # bash: source .venv/Scripts/activate
 pip install torch==2.15.0 torchvision==0.29.2 --index-url https://download.pytorch.org/whl/cpu
 pip install -r requirements.txt
-python -m concrete_evidence.privacy --fetch   # face model (230 KB, MIT) for blurring workers' faces
 ```
 
-Every saved frame has faces blurred first (GDPR). Without the face model, frame
-extraction and captures stop with an error rather than save a face unblurred.
+Site videos show workers: frames are saved as they are, so label and share only frames you may share.
 
 For the stages that talk to Roboflow, set your own key in the terminal. Never put it in a file.
 
@@ -42,11 +40,10 @@ $env:ROBOFLOW_API_KEY = "..."
 | 6 | **ConRebSeg** (optional) | `python pipeline.py conrebseg` | Concrete-repair site photos (DTU, CC BY 4.0), self-collected part only (no YouTube). Its labels outline **patches** of exposed rebar, not single bars, so they become `exposed_rebar`, never `bar`. Use it only as a warm-up for how real rebar looks in dirt and shadow; converted to YOLO-seg in `data/conrebseg_yolo/` with its own train / val / test split. Download it into `data/conrebseg/` first (22.6 GB: `ConRebSeg.zip` + `samples.json`, see the notebook). `--limit 1000` for a quick run. SORD (`python pipeline.py sord`, synthetic, CC BY-NC) stays as an optional quick test. |
 | 7 | **Warm-up** (optional) | `python pipeline.py train --stage pretrain` | On ConRebSeg (`--data sord` for SORD): `runs/pretrain/weights/best.pt`. Only worth it if it beats the baseline on the same test frames. Needs a GPU: use the Colab notebook `training/train_rebar_yolov8seg.ipynb`, Part A. |
 | 8 | **Pull** | `python pipeline.py pull --version 1` | Your labelled version in `data/ours/`. |
-| 8b | **Depth filter** (optional) | `python pipeline.py depth data/ours --out data/ours_depth` | Depth Anything before YOLO: every photo with the far background greyed out, labels and `data.yaml` copied, so you can train on `data/ours_depth/data.yaml`. Also works on one photo or a folder (`--preview` for colour depth pictures, `--slices 2` for one image per depth layer). See *Depth Anything before YOLO* below. |
 | 9 | **Baseline** | `python pipeline.py train --stage finetune` | `runs/finetune/weights/best.pt`, from the standard pretrained YOLOv8 weights, on our own frames. Add `--model runs/pretrain/weights/best.pt` to start from the warm-up instead, same seed, and compare. GPU / Colab (Part B of the notebook). |
 | 10 | **Evaluate** | `python pipeline.py eval` | `runs/eval.json`: mask precision, recall, mAP per class. These are the numbers for the `[__]` boxes on the slides. |
 | 11 | **Export** | `python pipeline.py export --format coreml` | Model for the phone (`coreml` iPhone/iPad, `tflite` Android, `onnx` server). |
-| 12 | **Live** | `python pipeline.py live --source 0` (`--depth-filter` if trained on filtered photos) | Webcam (or `--source video.mp4`, or a phone stream URL). Masks, a tracking ID per bar, markers, mm scale. Says **READY TO CHECK** when all 4 markers are in view and the camera is still; press **C** to save that frame and its detections in mm to `live/captures/` (faces blurred). |
+| 12 | **Live** | `python pipeline.py live --source 0` | Webcam (or `--source video.mp4`, or a phone stream URL). Masks, a tracking ID per bar, markers, mm scale. Says **READY TO CHECK** when all 4 markers are in view and the camera is still; press **C** to save that frame and its detections in mm to `live/captures/`. |
 | 13 | **Check** | `python pipeline.py check --schedule live/schedule_example.json --zone end --face A` | The latest capture against the bar bending schedule and the Eurocode 8 limits: bar count (missing bar), bar size, spacing (shifted or missing bar), tie spacing per column zone, hook angle (90° vs 135°) and hook tail length. Each fault comes with a plain fix instruction. Writes `<capture>.check.json`, every fault with the bars' tracking ids, for a person to confirm or reject. |
 
 Weights and data never go into git (`runs/`, `data/`, `*.pt` are ignored). Keep `best.pt` on the team Google Drive.
@@ -56,28 +53,6 @@ Weights and data never go into git (`runs/`, `data/`, `*.pt` are ignored). Keep 
 - **No open dataset outlines single bars in a cage before the pour.** ConRebSeg (12,000 real photos) outlines patches of exposed rebar in repair work; SORD outlines crossings and gaps in rendered mats. Neither has our classes.
 - So the baseline trains on our own labelled frames from the standard pretrained weights. ConRebSeg or SORD can be tried as a warm-up, and kept only if it scores better on the same test frames.
 - **Our labels** teach the classes we actually check (`bar`, `tie`, hooks) on real camera frames: blur, glare, our phone, our cages. Bar-by-bar checking needs this stage.
-
-## Depth Anything before YOLO
-
-Site photos are cluttered: formwork, scaffolding, the next column. `concrete_evidence/depth.py` runs
-**Depth Anything V2 Small** (Apache-2.0, pinned revision; Base and Large are non-commercial, so not used) on the
-photo first. It guesses how near each pixel is, keeps the near part (the cage), grows it by 15 px so bar edges are
-never cut, and paints everything behind it plain grey (114, the grey YOLO pads with). YOLO then runs on that
-cleaned photo, unchanged.
-
-```
-photo ──► Depth Anything ──► keep the near part, grey the rest ──► YOLO ──► lines ──► check
-                        └──► (optional) depth slices, one image per layer, nearest first
-```
-
-- **Train and run on the same kind of photo.** If the live view uses `--depth-filter`, train on
-  `data/ours_depth` (the `depth` stage on the dataset). Mixing filtered and unfiltered photos costs accuracy.
-- **Relative depth only:** nearer or farther, no units. The cut between near and far is automatic (Otsu) unless
-  you give `--threshold 0-1`. When nothing stands out as near, the photo is kept whole rather than greyed.
-- **Speed:** about 2.7 s per 1920 × 1200 photo on a laptop CPU (21 Nov 2026), so on a laptop it suits captures
-  and datasets better than smooth live video. A GPU is far faster.
-- **Layers:** `--slices N` splits the kept part into N depth bands. Layers about 50 mm apart may not separate from
-  one photo; for columns this matters less, since ties wrap the outside of the cage.
 
 ## Where the live view hands over to the checker
 
@@ -106,7 +81,7 @@ The engineer's bar bending schedule says what the cage must be. Write it as JSON
 - **Zone and face:** the photo alone can't tell where the floor is or which face it shows. Pass `--zone end|middle` (default `end`, the strictest) and `--face A`, or put `zone` and `face` in the capture.
 - **Fix instructions** (`concrete_evidence/fixes.py`), e.g. *Column C1, face A: Add 2 tie(s) between 100 and 330 mm from the first tie in view (gap 230 mm, at most 100 mm in the end zone).* Positions count from the first tie in view, reading down the photo.
 - **A person decides.** The result is never "approved". It lists faults for someone on site to confirm or reject: the camera can miss a bar hidden behind another (occlusion), and columns and beams fail in different ways.
-- The checks assume a view square onto one face, or top-down onto one layer of bars. Column ties wrap the outside of the cage, so one face is one layer. Depth (Depth Anything) is for footings and slabs with stacked layers: a later step.
+- The checks assume a view square onto one face, or top-down onto one layer of bars. Column ties wrap the outside of the cage, so one face is one layer. Separating stacked layers (footings, slabs) needs more than one photo: a point cloud is the next step (Depth Anything was tried and did not separate the layers).
 
 ## Tested so far (20 Nov 2026, laptop CPU)
 
@@ -114,6 +89,5 @@ The engineer's bar bending schedule says what the cage must be. Write it as JSON
 - 3-epoch CPU test training: the pipeline runs end to end. The scores are low, as expected from 3 epochs on 100 images. Use them only as proof that the pipeline works.
 - `live.py` on a test video with markers pasted in: 4/4 markers found, scale measured at 1.053 mm/px (about 1.04 expected), READY shown only once the camera was still, captures saved. 0.7 fps on this laptop's CPU while training ran alongside; a phone with the exported model will be far faster.
 - `check` on made-up captures (tests in `tests/test_check.py`): a missing bar, a shifted bar, a thin bar, a 90° hook and a short tail are each found; a cage as scheduled has none.
-- Depth filter (`tests/test_depth.py`, with a stand-in for the model): the near block kept with its margin, the far background greyed, layers nearest first, a dataset's labels and `data.yaml` carried over. Run for real on 2 ConRebSeg photos: the near surface kept, the far background greyed, 55-62 % of each photo kept. Not yet tried on a photo of a cage before the pour.
 - Ties and Eurocode 8 (`tests/test_ties.py`): the limits for a 400 mm column, a missing tie in the end zone and its fix instruction, the same gap passing in the middle zone, a loose schedule capped by the code.
 - Not tested yet: `upload` and `pull` (need the Roboflow key), GPU training, `export` to CoreML, `check` on a real capture from the trained model.

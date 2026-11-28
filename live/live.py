@@ -5,7 +5,7 @@ Runs the segmentation model on a live feed (webcam, phone stream or video file),
 keeps an ID on every detection between frames (tracking), finds the 4 ArUco
 markers, and says when the frame is good enough to check: all 4 markers in view
 and the camera held still. Press C (or use --auto) to save that frame with its
-detections in mm for the checker. Faces are blurred in everything saved.
+detections in mm for the checker.
 
     python live/live.py                                   # laptop webcam
     python live/live.py --source http://PHONE_IP:8080/video   # phone camera app stream
@@ -31,7 +31,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from concrete_evidence.capture import Stillness, counts, records_from_result  # noqa: E402
 from concrete_evidence.markers import DEFAULT_MARKER_MM, MARKER_IDS, MarkerDetector  # noqa: E402
-from concrete_evidence.privacy import blur_faces  # noqa: E402
 
 
 def parse_args():
@@ -49,8 +48,6 @@ def parse_args():
     p.add_argument("--no-show", action="store_true", help="no window (for tests / servers)")
     p.add_argument("--out", default=None, help="also write the annotated video here (.mp4)")
     p.add_argument("--max-frames", type=int, default=0, help="stop after N frames (0 = no limit)")
-    p.add_argument("--depth-filter", action="store_true",
-                   help="Depth Anything before YOLO: grey out the far background (train on filtered photos too)")
     return p.parse_args()
 
 
@@ -65,15 +62,13 @@ def status_bar(frame, lines, ready):
 
 
 def save_capture(folder, raw, annotated, dets, mm_per_px, found):
-    """Save the frame (faces blurred), the annotated view and a JSON of detections."""
+    """Save the frame, the annotated view and a JSON of detections."""
     folder.mkdir(parents=True, exist_ok=True)
     stem = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-    raw, n_faces = blur_faces(raw)
-    annotated, _ = blur_faces(annotated)
     cv2.imwrite(str(folder / f"{stem}.jpg"), raw)
     cv2.imwrite(str(folder / f"{stem}_annotated.jpg"), annotated)
     rec = {"time": datetime.now().isoformat(timespec="seconds"), "mm_per_px": mm_per_px,
-           "markers_seen": sorted(found), "faces_blurred": n_faces, "counts": counts(dets), "detections": dets}
+           "markers_seen": sorted(found), "counts": counts(dets), "detections": dets}
     (folder / f"{stem}.json").write_text(json.dumps(rec, indent=2))
     print(f"[capture] {stem}: {rec['counts']}, scale {mm_per_px and round(mm_per_px, 3)} mm/px")
     return stem
@@ -84,10 +79,6 @@ def main():
     from ultralytics import YOLO  # heavy; only needed when the live view runs
 
     model = YOLO(a.model)
-    depth = None
-    if a.depth_filter:
-        from concrete_evidence.depth import DepthAnything, filter_image
-        depth = DepthAnything(device=a.device)
     src = int(a.source) if a.source.isdigit() else a.source
     cap = cv2.VideoCapture(src)
     if not cap.isOpened():
@@ -103,8 +94,7 @@ def main():
         if not ok:
             break
         n += 1
-        seen = filter_image(frame, depth(frame))["image"] if depth else frame
-        result = model.track(seen, persist=True, imgsz=a.imgsz, conf=a.conf, device=a.device,
+        result = model.track(frame, persist=True, imgsz=a.imgsz, conf=a.conf, device=a.device,
                              tracker="bytetrack.yaml", verbose=False, retina_masks=False,
                              max_det=500)[0]  # dense cages: SORD frames hold up to ~430 objects
         found = markers.find(frame)

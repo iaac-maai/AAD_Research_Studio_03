@@ -11,14 +11,15 @@ fault to confirm or reject. Once each fault has a decision, they sign the face o
 | Password | `functions/_middleware.js`, checked on the server; the cookie holds a hash, never the password | secret `APP_PASSWORD` |
 | Model | `/api/check` calls the Render model server's `/predict` | `MODEL_URL` in `wrangler.toml` |
 | Checks | one row per checked photo; one row per review decision (`schema.sql`) | D1 `concrete-evidence-db` |
-| Photos | the checked photo (faces blurred, outlines drawn) and the full result JSON. **The original upload is never stored** | R2 `concrete-evidence-photos` |
+| Photos | the checked photo (outlines drawn) and the full result JSON. **The original upload is never stored** | R2 `concrete-evidence-photos` |
 
 ## API
 
 | Route | What it does |
 |---|---|
 | `POST /api/login`, `POST /api/logout` | sign in / out |
-| `POST /api/check` | form: `photo`, `schedule` (JSON), `zone` (`end`/`middle`), `face` → the check; **503 `{waking: true}`** while Render wakes, the page retries for up to 3 minutes and says "the model is waking up" |
+| `GET /api/cities?q=` | up to 8 towns for the site-city field (GeoNames, CC BY 4.0) |
+| `POST /api/check` | form: `photo`, `schedule` (JSON, checked against `live/schedule.schema.json`: 400 if it doesn't fit), `zone` (`end`/`middle`), `face` → the check; **503 `{waking: true}`** while Render wakes, the page retries for up to 3 minutes and says "the model is waking up" |
 | `GET /api/checks` | the 30 latest checks |
 | `GET /api/checks/<id>` | one check: schedule, every rule and its status, fixes, review decisions |
 | `GET /api/photos/<id>` | the checked photo |
@@ -55,7 +56,7 @@ minutes waits about a minute while Render wakes.
 ## Tested locally (21 Nov 2026)
 
 - Without login: `/api/checks` and `/api/photos/<id>` → 401, `/` → redirect to `/login`; wrong password → `/login?wrong=1`.
-- One photo (skewer stand-in, 1280 × 960) through `/api/check` → model server → 72 pieces, 37 faults (a skewer mat
+- One photo (the first test model, 1280 × 960) through `/api/check` → model server → 72 pieces, 37 faults (a skewer mat
   against a column schedule, as expected), fix list; 2.1 s. Row in D1, photo (105 kB) and result in R2.
 - A review decision saved in D1; sign-off refused until every fault is decided.
 - The page in the browser: sign in, history, open a check with its photo and status.

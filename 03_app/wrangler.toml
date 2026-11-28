@@ -15,7 +15,7 @@ binding = "DB"
 database_name = "concrete-evidence-db"
 database_id = "6ef539c7-c578-4b06-b9c1-ec548951c12e"
 
-# The checked photos (faces blurred) and full results. Without this binding they go into D1's `files` table
+# The checked photos and full results. Without this binding they go into D1's `files` table
 # (lib/storage.js). R2 is not enabled on the account yet: to switch back, run
 # `npx wrangler r2 bucket create concrete-evidence-photos` and remove the # from the three lines below.
 # [[r2_buckets]]

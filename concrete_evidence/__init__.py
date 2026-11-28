@@ -5,7 +5,6 @@ Modules
     frames    pick sharp, non-duplicate frames from site videos for labelling
     convert   LabelMe / COCO segmentation labels -> YOLO-seg
     capture   stillness check and detection records for the live view
-    privacy   blur faces before a frame is saved or uploaded
 
 Heavy libraries (torch, ultralytics) are imported only where they are used,
 so the package and its tests run with numpy and OpenCV alone.

@@ -1,5 +1,5 @@
 # What the tests and the GitHub check need. No torch or ultralytics: the tests cover the
-# parts that don't need the model (markers, frames, labels, privacy, the pipeline's checks).
+# parts that don't need the model (markers, frames, labels, the pipeline's checks).
 numpy==2.5.4
 opencv-python-headless==5.1.0.95
 pillow==13.0.0

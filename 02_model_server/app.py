@@ -13,8 +13,7 @@ Settings, from the environment (Render: Environment tab):
   MODEL_PATH    weights to load: .onnx (ONNX Runtime) or .pt (Ultralytics); default models/best.onnx
   MODEL_REPO    a Hugging Face repo to download the weights from, e.g. iaac-maai/concrete-evidence-rebar
   MODEL_FILE    the file in that repo (default best.onnx)
-  CLASS_RENAME  model class=our class, comma separated, e.g. skewer=bar for the skewer test model
-  DEPTH_FILTER  1 to run Depth Anything (ONNX, 99 MB) before YOLO
+  CLASS_RENAME  model class=our class, comma separated, e.g. stirrup=tie for Diego's model
 """
 
 import base64
@@ -30,7 +29,6 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from concrete_evidence import privacy  # noqa: E402
 from concrete_evidence.check import summary  # noqa: E402
 from concrete_evidence.infer import analyse  # noqa: E402
 
@@ -63,13 +61,8 @@ def parse_rename(text: str) -> dict:
     return dict(kv.strip().split("=", 1) for kv in text.split(",") if "=" in kv)
 
 
-privacy.fetch()  # face model (227 KB, MIT, checksum-pinned): every photo is blurred before anything else
 MODEL, MODEL_NAME = load_model()
 RENAME = parse_rename(os.environ.get("CLASS_RENAME", ""))
-DEPTH = None
-if os.environ.get("DEPTH_FILTER") == "1":
-    from concrete_evidence.depth import DepthAnythingOnnx
-    DEPTH = DepthAnythingOnnx()
 
 
 def decode_image(image_b64: str) -> np.ndarray:
@@ -85,10 +78,10 @@ def run(img: np.ndarray, schedule_json: str, zone: str, face: str) -> dict:
     schedule = json.loads(schedule_json or "{}")  # check.run fills in the defaults itself
     if not schedule.get("bar_diameter_mm"):
         raise ValueError("the schedule needs bar_diameter_mm")
-    out = analyse(img, schedule, MODEL, depth=DEPTH, zone=zone or None, face=face or None, rename=RENAME)
+    out = analyse(img, schedule, MODEL, zone=zone or None, face=face or None, rename=RENAME)
     ok, jpg = cv2.imencode(".jpg", out.pop("annotated"), [cv2.IMWRITE_JPEG_QUALITY, 85])
     out["annotated_jpg_base64"] = base64.b64encode(jpg.tobytes()).decode()
-    out["model"] = {"weights": MODEL_NAME, "rename": RENAME, "depth_filter": DEPTH is not None}
+    out["model"] = {"weights": MODEL_NAME, "rename": RENAME}
     return out
 
 

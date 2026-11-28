@@ -6,7 +6,7 @@ services:
     runtime: python
     region: frankfurt
     plan: free
-    buildCommand: pip install -r 02_model_server/requirements.txt && python -m concrete_evidence.privacy --fetch
+    buildCommand: pip install -r 02_model_server/requirements.txt
     startCommand: python 02_model_server/app.py
     healthCheckPath: /
     envVars:
@@ -14,9 +14,7 @@ services:
         value: iaac-maai/concrete-evidence-rebar
       - key: MODEL_FILE          # the file in that repo
         value: best.onnx
-      - key: CLASS_RENAME        # the model says stirrup, the checker says tie (skewer=bar was the stand-in)
+      - key: CLASS_RENAME        # the model says stirrup, the checker says tie
         value: stirrup=tie
-      - key: DEPTH_FILTER        # 0 on the free plan: with Depth Anything the server peaks at 592 MB
-        value: "0"
       - key: HF_HOME
         value: /tmp/hf

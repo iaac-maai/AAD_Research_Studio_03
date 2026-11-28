@@ -49,7 +49,7 @@ def video(tmp_path):
 
 def test_extract_drops_blur_and_duplicates(video, tmp_path):
     out = tmp_path / "frames"
-    r = extract(video, out, every_s=0.2, blur_faces=False)  # every 2nd frame -> 15 candidates; no people here
+    r = extract(video, out, every_s=0.2)  # every 2nd frame -> 15 candidates
     assert r.kept + r.blurry + r.duplicates == 15
     assert r.blurry >= 4
     assert r.duplicates >= 3  # the still second repeats itself

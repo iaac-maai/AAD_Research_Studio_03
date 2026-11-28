@@ -37,7 +37,7 @@ So what the model learned about stirrups and hooks from the synthetic renders do
 
 ## For the app (Akshat)
 
-- The model's class is called `stirrup`. If the app still expects `tie`, set `CLASS_RENAME=stirrup=tie` (as in `team/akshat/MONDAY.md`).
+- The model's class is called `stirrup`. If the app still expects `tie`, set `CLASS_RENAME=stirrup=tie` (as in `render.yaml`).
 - Start with `conf=0.25` and `max_det=500`, the same as the evaluation.
 - Until stirrups and hooks have a real test score, treat the hook-type check as a demo, not a measured result.
 

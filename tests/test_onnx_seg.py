@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 
 from concrete_evidence.capture import records_from_result
-from concrete_evidence.depth import dpt_size
 from concrete_evidence.onnx_seg import OnnxSeg, letterbox, nms
 
 onnx = pytest.importorskip("onnx")
@@ -67,10 +66,3 @@ def test_onnx_runner_end_to_end(tmp_path):
     recs = records_from_result(result, mm_per_px=0.5)
     assert recs[0]["class"] == "bar" and abs(recs[0]["length_px"] - 200) <= 4
     assert abs(recs[0]["length_mm"] - 100) <= 2 and recs[0]["polygon"]
-
-
-def test_depth_input_size_matches_the_processor():
-    assert dpt_size(1280, 960) == (686, 518)  # short side 518, both multiples of 14
-    assert dpt_size(518, 518) == (518, 518)
-    h, w = dpt_size(3000, 4000)
-    assert h == 518 and w % 14 == 0
