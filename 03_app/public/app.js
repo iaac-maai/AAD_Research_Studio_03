@@ -249,6 +249,19 @@ function showPieces(c) {
         p.setAttribute("fill", colour); p.setAttribute("fill-opacity", "0.45");
         p.setAttribute("stroke", colour); p.setAttribute("stroke-width", "3"); p.setAttribute("vector-effect", "non-scaling-stroke");
         shapes.push(p);
+        if (d.axis_px?.length > 1) { // the axis polyline, corners dotted: where the bar bends
+          const l = document.createElementNS(SVG, "polyline");
+          l.setAttribute("points", d.axis_px.map(([x, y]) => `${x},${y}`).join(" "));
+          Object.entries({ fill: "none", stroke: "#ffffff", "stroke-width": 2, "vector-effect": "non-scaling-stroke" })
+            .forEach(([k, v]) => l.setAttribute(k, v));
+          shapes.push(l);
+          for (const [x, y] of d.axis_px.slice(1, -1)) {
+            const c = document.createElementNS(SVG, "circle");
+            Object.entries({ cx: x, cy: y, r: Math.max(4, (d.thickness_px || 8) / 2), fill: "#ffffff" })
+              .forEach(([k, v]) => c.setAttribute(k, v));
+            shapes.push(c);
+          }
+        }
       } else if (d.centre_px && d.size_px) {
         const r = document.createElementNS(SVG, "rect");
         const [cx, cy] = d.centre_px, [w, h] = d.size_px;
@@ -284,8 +297,9 @@ function showPieces(c) {
     const isHook = String(d.class).startsWith("hook");
     const want = isTie ? Number(s.tie_diameter_mm || 8) : Number(s.bar_diameter_mm || 16);
     let verdict = "—", state = "";
-    if (mm && d.width_px && !isHook) {
-      const w = d.width_px * mm;
+    const thick = d.thickness_px ?? d.width_px; // measured across the axis when there is one
+    if (mm && thick && !isHook) {
+      const w = thick * mm;
       const nearest = SIZES.reduce((a, b) => (Math.abs(b - w) < Math.abs(a - w) ? b : a));
       if (Math.abs(w - want) <= tol) { verdict = `Matches Ø${want}`; state = "ok"; }
       else { verdict = `Looks like Ø${nearest}, not Ø${want}`; state = "bad"; }
@@ -299,8 +313,10 @@ function showPieces(c) {
       Object.assign(document.createElement("td"), { textContent: PIECE_LABEL[d.class] || d.class }),
       dir,
       Object.assign(document.createElement("td"), { className: "num", textContent: d.rel == null ? "—" : `${Math.round(d.rel)}°` }),
-      Object.assign(document.createElement("td"), { className: "num", textContent: fmt(d.length_px) }),
-      Object.assign(document.createElement("td"), { className: "num", textContent: isHook ? "—" : fmt(d.width_px) }),
+      Object.assign(document.createElement("td"), { className: "num", textContent: fmt(d.axis_length_px ?? d.length_px) }),
+      Object.assign(document.createElement("td"), { className: "num", textContent: isHook ? "—" : fmt(d.thickness_px ?? d.width_px) }),
+      Object.assign(document.createElement("td"), { textContent: d.segments_px?.length ? d.segments_px.map((p) => fmt(p).replace(" mm", "")).join(" + ") + (mm ? " mm" : " px") : "—" }),
+      Object.assign(document.createElement("td"), { className: "num", textContent: d.bends_deg?.length ? d.bends_deg.map((b) => `${Math.round(b)}°`).join(", ") : "—" }),
       v,
     );
     return tr;

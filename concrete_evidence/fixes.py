@@ -53,6 +53,8 @@ def _fix(item: dict) -> str | None:
         return f"Rebend hook {_ids(item)} to {e}° (now {m}°; 90° hooks open in earthquakes)."
     if c == "hook_tail":
         return f"Replace the tie with hook {_ids(item)} (tail {m:g} mm, needs {e:g} mm)."
+    if c == "lap_length":
+        return f"Add a splice bar beside bars {_ids(item)}, lapping each by {e:g} mm (overlap now {m:g} mm)."
     if c == "schedule_vs_code":
         return _ask(item)
     return None

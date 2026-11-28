@@ -28,7 +28,7 @@ from statistics import median
 
 import numpy as np
 
-from . import codes, location
+from . import axis, codes, location
 
 DEFAULTS = {
     "spacing_tol_mm": 25.0,   # bars: how far a gap may be off the drawing. Wide on purpose: only a bar
@@ -38,6 +38,8 @@ DEFAULTS = {
     "hook_angle": 135,        # stirrups and ties in columns and beams: 135 degree hooks
     "hook_tail_factor": 10,   # tail at least this many bar diameters; check your code (EC2 / EC8 / local)
     "parallel_deg": 20.0,     # bars within this angle of the main direction count as one layer
+    "bend_tol_deg": 20.0,     # a measured bend this far off the scheduled hook angle is a fault to confirm
+    "lap_parallel_deg": 10.0, # two bars this close to parallel, side by side, may be a lap
 }
 BAR, TIE = "bar", "tie"
 ZONES = ("end", "middle")
@@ -95,7 +97,9 @@ def check_diameter(bars, s, mm, source):
     return out or [_item("bar_size", "pass", f"all bars within {tol:g} mm of {d:g} mm")]
 
 
-def check_spacing(bars, s, mm):
+def check_spacing(bars, s, mm, laps=frozenset()):
+    """Gaps between neighbouring bars across the layer. `laps` are pairs of ids lapped side by side
+    (check_laps): they stand in one bar position, so their small gap isn't a spacing fault."""
     sp = s.get("bar_spacing_mm")
     if not sp or len(bars) < 2:
         return []
@@ -113,7 +117,7 @@ def check_spacing(bars, s, mm):
     tol, out = float(s["spacing_tol_mm"]), []
     for (p0, t0), (p1, t1) in zip(pos, pos[1:], strict=False):
         gap = round(float(p1 - p0), 1)
-        if abs(gap - sp) <= tol:
+        if abs(gap - sp) <= tol or tuple(sorted((t0, t1), key=str)) in laps:
             continue
         if gap > 1.5 * sp:
             detail = f"gap of {gap} mm: a bar is probably missing or shifted here"
@@ -215,10 +219,12 @@ def check_ties(dets, bars, s, mm, limits, zone):
 
 
 def check_hooks(dets, s, mm, limits=None):
+    """Hook angle and tail. The model names the hook (hook_90 / hook_135); the axis polyline measures the bend
+    and the tail (axis.py). Without an axis the tail falls back to the outline length, an upper estimate."""
     hooks = [d for d in dets if str(d.get("class", "")).startswith("hook_")]
     if not hooks:
         return [_item("hooks", "unknown", "no hooks seen in this frame")]
-    want = int(s["hook_angle"])
+    want, tol = int(s["hook_angle"]), float(s["bend_tol_deg"])
     by_angle = (limits or {}).get("hook_tail_min_by_angle_mm")  # Eurocode 2 only: the tail depends on the bend
     out = []
     for h in hooks:
@@ -226,15 +232,75 @@ def check_hooks(dets, s, mm, limits=None):
         tail_min = float(s["hook_tail_factor"]) * float(s.get("tie_diameter_mm") or s["bar_diameter_mm"])
         if by_angle and angle in by_angle:  # the code's tail for this bend, raised only by a drawing that asks for more
             tail_min = max(by_angle[angle], tail_min if s.get("_tail_on_drawing") else 0)
+        bend = max(h["bends_deg"]) if h.get("bends_deg") else None
+        seen = f" (measured bend about {bend:.0f} degrees in the photo)" if bend is not None else ""
         if angle != want:
-            out.append(_item("hook_angle", "fail", f"{angle} degree hook, scheduled {want}", angle, want,
+            out.append(_item("hook_angle", "fail", f"{angle} degree hook, scheduled {want}{seen}", angle, want,
                              [h["track_id"]]))
-        if h.get("length_px"):
-            tail = round(h["length_px"] * mm, 1)  # outline length: bend plus tail, so an upper estimate
+        elif bend is not None and abs(bend - want) > tol:
+            out.append(_item("hook_angle", "fail",
+                             f"hook bent about {bend:.0f} degrees in the photo, scheduled {want} ± {tol:g}: "
+                             "check it square-on, a slanted view changes the angle", round(bend), want,
+                             [h["track_id"]]))
+        t_px = axis.tail_px(h) if h.get("segments_px") else h.get("length_px")
+        if t_px:
+            tail = round(t_px * mm, 1)
             if tail < tail_min:
-                out.append(_item("hook_tail", "fail", f"hook about {tail} mm long, needs at least {tail_min:g} mm",
+                out.append(_item("hook_tail", "fail", f"hook tail about {tail} mm, needs at least {tail_min:g} mm",
                                  tail, tail_min, [h["track_id"]]))
     return out or [_item("hooks", "pass", f"{len(hooks)} hook(s), all {want} degrees and long enough")]
+
+
+def _ends(d):
+    """The two ends of a piece's axis (or of its rotated box when there is no axis), in px."""
+    if d.get("axis_px") and len(d["axis_px"]) >= 2:
+        return np.array(d["axis_px"][0], float), np.array(d["axis_px"][-1], float)
+    if d.get("axis_centre_px") and d.get("length_px") and d.get("angle_deg") is not None:
+        c, half = np.array(d["axis_centre_px"], float), d["length_px"] / 2
+        u = np.array([np.cos(np.radians(d["angle_deg"])), np.sin(np.radians(d["angle_deg"]))])
+        return c - u * half, c + u * half
+    return None
+
+
+def check_laps(bars, s, mm):
+    """Lapped bars: two parallel bars side by side whose ends are staggered. The overlap is measured along
+    their axes and checked against the schedule's lap length, or at least the Eurocode 2 floor
+    l0,min = max(15 x diameter, 200 mm) when the schedule gives none. No model training: it's a formula."""
+    phi = float(s["bar_diameter_mm"])
+    near = codes.lap_max_gap(phi) + phi          # centre to centre: clear gap allowed plus one bar
+    if s.get("bar_spacing_mm"):                  # neighbours at the scheduled spacing are a layer, not a lap
+        near = min(near, 0.5 * float(s["bar_spacing_mm"]))
+    need = float(s.get("lap_length_mm") or codes.lap_min(phi))
+    src = "schedule" if s.get("lap_length_mm") else "Eurocode 2 minimum, max(15 x diameter, 200 mm)"
+    pieces = [(b, e) for b in bars if (e := _ends(b)) is not None]
+    out = []
+    for i, (a, (a0, a1)) in enumerate(pieces):
+        for b, (b0, b1) in pieces[i + 1:]:
+            ua, ub = a1 - a0, b1 - b0
+            la, lb = np.linalg.norm(ua), np.linalg.norm(ub)
+            if la == 0 or lb == 0:
+                continue
+            ua, ub = ua / la, ub / lb
+            if abs(float(np.dot(ua, ub))) < np.cos(np.radians(s["lap_parallel_deg"])):
+                continue
+            if np.dot(ua, ub) < 0:
+                b0, b1 = b1, b0
+            n = np.array([-ua[1], ua[0]])
+            across = abs(float(np.dot((b0 + b1) / 2 - (a0 + a1) / 2, n))) * mm
+            if across > near:
+                continue
+            ta, tb = (0.0, float(la)), tuple(sorted((float(np.dot(b0 - a0, ua)), float(np.dot(b1 - a0, ua)))))
+            overlap = (min(ta[1], tb[1]) - max(ta[0], tb[0])) * mm
+            inside = (tb[0] >= ta[0] and tb[1] <= ta[1]) or (ta[0] >= tb[0] and ta[1] <= tb[1])
+            if overlap <= 0 or inside:  # not touching along the bar, or one runs the whole length of the other
+                continue
+            ov = round(overlap, 1)
+            ids = sorted((a["track_id"], b["track_id"]), key=str)
+            status = "fail" if ov < need else "pass"
+            word = "need at least" if status == "fail" else "at least"
+            out.append(_item("lap_length", status, f"bars overlap about {ov} mm, {word} {need:g} mm ({src})",
+                             ov, need, ids))
+    return out
 
 
 def run(capture: dict, schedule: dict, zone: str | None = None, face: str | None = None) -> dict:
@@ -263,8 +329,10 @@ def run(capture: dict, schedule: dict, zone: str | None = None, face: str | None
     if mm is None:
         items += [_item("scale", "unknown", "no markers and no bar outlines: nothing can be measured")]
     else:
-        items += (check_count(bars, s) + check_diameter(bars, s, mm, source) + check_spacing(bars, s, mm)
-                  + check_ties(dets, bars, s, mm, limits, zone) + check_hooks(dets, s, mm, limits))
+        laps = check_laps(bars, s, mm)
+        pairs = frozenset(tuple(i["track_ids"]) for i in laps)
+        items += (check_count(bars, s) + check_diameter(bars, s, mm, source) + check_spacing(bars, s, mm, pairs)
+                  + check_ties(dets, bars, s, mm, limits, zone) + check_hooks(dets, s, mm, limits) + laps)
     faults = [i for i in items if i["status"] == "fail"]
     result = {"element": s.get("element", ""), "face": face, "zone": zone, "place": place,
               "scale": {"mm_per_px": mm and round(mm, 4), "source": source},

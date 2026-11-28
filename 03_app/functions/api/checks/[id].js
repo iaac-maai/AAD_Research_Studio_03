@@ -27,6 +27,8 @@ async function pieces(env, key) {
       id: d.track_id, class: d.class, conf: d.conf, angle_deg: d.angle_deg ?? null,
       length_px: d.length_px ?? null, width_px: d.width_px ?? null, centre_px: d.centre_px, size_px: d.size_px,
       polygon: d.polygon || null,
+      axis_px: d.axis_px || null, segments_px: d.segments_px || null, bends_deg: d.bends_deg || null,
+      thickness_px: d.thickness_px ?? null, axis_length_px: d.axis_length_px ?? null,
     }));
     return { detections, mm_per_px: result.mm_per_px ?? null };
   } catch {

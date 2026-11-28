@@ -31,6 +31,13 @@ Column ties (hoops), EN 1992-1-1:2004 and EN 1998-1:2004:
   hooks, Eurocode 8: 135 degrees, tail at least 10 x tie diameter           EN 1998-1 5.6.1(2)P
   hooks, Eurocode 2 only: 135 degrees with tail >= max(5 x tie, 50 mm), or 90 degrees with
       tail >= max(10 x tie, 70 mm)                                        EN 1992-1-1 8.5, Anejo 19 8.5 (fig. A19.8.5)
+
+Laps (Eurocode 2), any bar:
+  lap length l0 = alpha6 x lbd, never less than
+      l0,min = max(0.3 x alpha6 x lb,rqd, 15 x bar diameter, 200 mm)   EN 1992-1-1 8.7.3(1)
+      The full l0 needs the design stress and concrete, so it comes from the schedule; without it we
+      check the floor max(15 x diameter, 200 mm) only.
+  clear gap between lapped bars at most 4 x bar diameter or 50 mm      EN 1992-1-1 8.7.2(3)
 """
 
 from __future__ import annotations
@@ -39,6 +46,16 @@ SOURCE_EC2 = "Eurocode 2 (EN 1992-1-1), recommended values: verify against your 
 SOURCE_EC8 = "Eurocode 8 (EN 1998-1) + Eurocode 2 (EN 1992-1-1), recommended values: verify against your national annex"
 SEISMIC = ("DCM", "DCH")
 NON_SEISMIC = ("NONE", "DCL")
+
+
+def lap_min(bar_diameter_mm: float) -> float:
+    """The Eurocode 2 floor for a lap length, in mm, without the design values: max(15 x diameter, 200 mm)."""
+    return max(15.0 * float(bar_diameter_mm), 200.0)
+
+
+def lap_max_gap(bar_diameter_mm: float) -> float:
+    """The largest clear gap between two lapped bars, in mm: 4 x diameter or 50 mm."""
+    return max(4.0 * float(bar_diameter_mm), 50.0)
 
 
 def column_ties(column_mm, cover_mm: float, bar_diameter_mm: float, tie_diameter_mm: float,
