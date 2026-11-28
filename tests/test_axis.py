@@ -80,3 +80,30 @@ def test_lapped_pair_is_not_a_spacing_fault():
     r = run({"mm_per_px": 1.0, "detections": dets}, {"bar_diameter_mm": 16, "bar_spacing_mm": 150})
     assert [c["status"] for c in r["checks"] if c["check"] == "spacing"] == ["pass"]
     assert [tuple(c["track_ids"]) for c in r["checks"] if c["check"] == "lap_length"] == [(1, 2)]
+
+
+def test_starter_level_with_its_column_bar_is_still_a_lap_and_counts_once():
+    # a starter and its column bar both start at the slab surface (y = 1000); only the starter's top end is staggered
+    dets = [lap_bar(1, 100, 100, 1000), lap_bar(2, 137, 400, 1000),
+            lap_bar(3, 206, 100, 1000), lap_bar(4, 312, 100, 1000)]
+    r = run({"mm_per_px": 1.0, "detections": dets},
+            {"bar_diameter_mm": 12, "bar_count": 3, "bar_spacing_mm": 106, "lap_length_mm": 600})
+    lap = next(c for c in r["checks"] if c["check"] == "lap_length")
+    assert lap["track_ids"] == [1, 2] and lap["status"] == "pass"
+    assert next(c for c in r["checks"] if c["check"] == "bar_count")["status"] == "pass"  # 4 outlines, 3 positions
+
+
+def test_bars_level_at_both_ends_are_not_a_lap():
+    dets = [lap_bar(1, 100, 100, 1000), lap_bar(2, 137, 100, 1000)]  # both cut by the photo's edges
+    r = run({"mm_per_px": 1.0, "detections": dets}, {"bar_diameter_mm": 12, "bar_spacing_mm": 106})
+    assert not [c for c in r["checks"] if c["check"] == "lap_length"]
+
+
+def test_bars_running_across_are_not_counted():
+    along = [lap_bar(i, 100 + 150 * i, 100, 1000) for i in range(4)]
+    across = []
+    for k in range(2):
+        poly = drawn([(50, 300 + 300 * k), (650, 300 + 300 * k)])
+        across.append(record(10 + k, "bar", 0.9, (50, 290 + 300 * k, 650, 310 + 300 * k), 1.0, poly))
+    r = run({"mm_per_px": 1.0, "detections": along + across}, {"bar_diameter_mm": 16, "bar_count": 4})
+    assert next(c for c in r["checks"] if c["check"] == "bar_count")["status"] == "pass"
