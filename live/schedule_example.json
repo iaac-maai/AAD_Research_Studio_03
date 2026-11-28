@@ -9,8 +9,8 @@
   "bar_spacing_mm": 155,
   "tie_diameter_mm": 8,
   "tie_spacing_mm": {"end": 100, "middle": 200},
-  "spacing_tol_mm": 10,
-  "diameter_tol_mm": 4,
+  "spacing_tol_mm": 25,
+  "diameter_tol_mm": 5,
   "hook_angle": 135,
   "hook_tail_factor": 10
 }
